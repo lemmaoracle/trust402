@@ -22,10 +22,12 @@
   },
   "dependencies": {
     "@lemmaoracle/sdk": "^0.0.22",
-    "@lemmaoracle/spec": "^0.0.22"
+    "@lemmaoracle/spec": "^0.0.22",
+    "ramda": "^0.30.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/ramda": "^0.30.0",
     "dotenv": "^16.4.7",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
