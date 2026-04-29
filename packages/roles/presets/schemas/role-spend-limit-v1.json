@@ -1,0 +1,33 @@
+{
+  "id": "role-spend-limit-v1",
+  "description": "Role-based spend authority for autonomous agent payments — combines hasRole and spendLimitBelow into a single ZK predicate",
+  "normalize": {
+    "artifact": {
+      "type": "https",
+      "wasm": "https://trust402.dev/artifacts/role-spend-limit.wasm",
+      "js": "https://trust402.dev/artifacts/role-spend-limit.js"
+    },
+    "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "abi": {
+      "raw": {
+        "identity": "object",
+        "authority": "object",
+        "financial": "object",
+        "lifecycle": "object",
+        "provenance": "object"
+      },
+      "norm": {
+        "identity.agentId": "string",
+        "identity.subjectId": "string",
+        "authority.roles": "string",
+        "authority.scopes": "string",
+        "financial.spendLimit": "string",
+        "financial.currency": "string",
+        "lifecycle.issuedAt": "string",
+        "lifecycle.expiresAt": "string",
+        "lifecycle.revoked": "string",
+        "provenance.issuerId": "string"
+      }
+    }
+  }
+}
