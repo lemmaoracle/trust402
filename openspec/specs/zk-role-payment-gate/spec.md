@@ -23,17 +23,17 @@ An autonomous agent receives a payment request via x402 protocol. Before settlin
 
 ---
 
-### User Story 2 - Register Circuit and Schema with Oracle (Priority: P2)
+### User Story 2 - Register Circuit with Oracle (Priority: P2)
 
-A developer registers the role-spend-limit circuit and its associated schema with the Lemma oracle. This makes the circuit's artifacts (wasm, zkey) discoverable and verifiable via the oracle's API, allowing any participant to locate and use the circuit for proof generation and verification.
+A developer registers the role-spend-limit circuit with the Lemma oracle. This makes the circuit's artifacts (wasm, zkey) discoverable and verifiable via the oracle's API, allowing any participant to locate and use the circuit for proof generation and verification.
 
 **Why this priority**: Registration is required for production use but the circuit can be tested locally without it. The proof generation and verification logic works independently of oracle registration.
 
-**Independent Test**: Can be tested by running the registration scripts against the Lemma API and confirming the circuit and schema metadata are retrievable via `circuits.getById` and `schemas.getById`.
+**Independent Test**: Can be tested by running the registration script against the Lemma API and confirming the circuit metadata is retrievable via `circuits.getById`.
 
 **Acceptance Scenarios**:
 
-1. **Given** compiled circuit artifacts (wasm, zkey) and a Pinata API key, **When** the registration script runs, **Then** artifacts are uploaded to IPFS and the circuit metadata is registered with the oracle
+1. **Given** compiled circuit artifacts (wasm, zkey) and a Pinata API key, **When** the registration script runs, **Then** artifacts are uploaded to IPFS and the circuit metadata is registered with the oracle via `circuits.register`
 2. **Given** a registered circuit with ID "role-spend-limit-v1", **When** a client queries `circuits.getById("role-spend-limit-v1")`, **Then** the response includes the artifact location, verifier address, and input specification
 
 ---
@@ -75,12 +75,12 @@ An AI agent follows a defined protocol (SKILL.md) that mandates generating a ZK 
 - **FR-008**: The system MUST provide a prove function that delegates proof generation to the Lemma SDK's prover module
 - **FR-009**: The system MUST provide a submit function that submits a generated proof to the Lemma oracle via the SDK's proofs module
 - **FR-010**: The system MUST provide a connect function that creates a Lemma client from an API base URL and API key
-- **FR-011**: The system MUST provide registration scripts that upload circuit artifacts to IPFS and register schema and circuit metadata with the Lemma oracle
+- **FR-011**: The system MUST provide a registration script that uploads circuit artifacts (wasm, zkey) to IPFS and registers circuit metadata with the Lemma oracle via `circuits.register`
 - **FR-012**: The circuit's spend limit comparison MUST use LessEqThan(128) to support values up to approximately 3.4 x 10^38 (sufficient for any USD-cent denomination)
 - **FR-013**: The system MUST provide a skill template (SKILL.md) that defines a mandatory proof-before-payment protocol for autonomous agents
 - **FR-014**: The skill template MUST specify that proof headers are attached to x402 payment requests as X-Lemma-Proof, X-Lemma-Proof-Inputs, and X-Lemma-Circuit-Id HTTP headers
 - **FR-015**: The skill template MUST halt the payment protocol if the agent's credential is revoked or missing required fields
-- **FR-016**: The circuit and its artifacts MUST be registered with the Lemma oracle via the SDK's `circuits.register` and `schemas.register` APIs, making them discoverable by any participant in the Lemma network
+- **FR-016**: The circuit and its artifacts MUST be registered with the Lemma oracle via the SDK's `circuits.register` API, making the circuit discoverable by any participant in the Lemma network. The `schemas.register` API MUST NOT be used to register circuit artifacts — schema registration requires a dedicated normalize WASM (wasm-bindgen format exporting a `normalize` function), which is distinct from the circom-compiled circuit WASM used for proof generation.
 - **FR-017**: The witness builder MUST reference the `agent-identity-authority-v1` schema's normalized field structure (specifically `authority.roles` and `financial.spendLimit`) to maintain interoperability with credentials issued under that schema
 
 ### Key Entities
@@ -110,12 +110,13 @@ An AI agent follows a defined protocol (SKILL.md) that mandates generating a ZK 
 - USD cents are the unit for spend limits and gate ceilings (e.g., $500 = 50000)
 - The resource server (x402 side) independently verifies proofs against a known verification key; this package does not implement server-side verification
 - IPFS (via Pinata) is the artifact storage layer for circuit wasm and zkey files
+- The `role-spend-limit-v1` circuit does NOT register a schema with the Lemma oracle. Schema registration requires a dedicated normalize WASM (wasm-bindgen format) which this package does not produce. The witness builder references the `agent-identity-authority-v1` schema's normalized field structure for interoperability but relies on that schema being registered separately.
 
 ## Relationship to Lemma
 
 This feature is built on the Lemma oracle stack. The upstream monorepo is [lemmaoracle/lemma](https://github.com/lemmaoracle/lemma) (`git@github.com:lemmaoracle/lemma.git`), which provides the core infrastructure:
 
-- **[Lemma SDK](https://github.com/lemmaoracle/lemma/tree/main/packages/sdk)** (`@lemmaoracle/sdk`): Handles proof creation (`prover.prove`), on-chain proof submission (`proofs.submit`), circuit and schema registration (`circuits.register`, `schemas.register`), and artifact resolution from IPFS. Trust402 delegates all cryptographic operations to the SDK rather than reimplementing them locally.
+- **[Lemma SDK](https://github.com/lemmaoracle/lemma/tree/main/packages/sdk)** (`@lemmaoracle/sdk`): Handles proof creation (`prover.prove`), on-chain proof submission (`proofs.submit`), circuit registration (`circuits.register`), and artifact resolution from IPFS. Trust402 delegates all cryptographic operations to the SDK rather than reimplementing them locally.
 - **Circuit registry**: The `role-spend-limit` circuit is registered with the Lemma oracle, making its artifacts (wasm, zkey, verification key) discoverable via the oracle's API.
 - **Proof submission**: Generated proofs are submitted to the Lemma oracle via `proofs.submit`, creating an auditable on-chain record.
 - **Schema interoperability**: The witness builder reads credentials conforming to the `agent-identity-authority-v1` schema — the same schema used by the Lemma `agent` package.

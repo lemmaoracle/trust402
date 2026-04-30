@@ -9,9 +9,9 @@ Autonomous AI agents need a cryptographic enforcement layer to gate payments by 
 - Implement `prove` function delegating to Lemma SDK's `prover.prove`
 - Implement `submit` function delegating to Lemma SDK's `proofs.submit`
 - Implement `connect` curried factory for Lemma client creation
-- Implement registration scripts (`register-schema.ts`, `register-circuit.ts`) for Lemma oracle
+- Implement registration script (`register-circuit.ts`) for Lemma oracle
 - Create SKILL.md enforcement template for proof-before-payment protocol
-- Define preset manifests for schema and circuit metadata
+- Define preset manifest for circuit metadata
 
 ## Capabilities
 
@@ -25,10 +25,10 @@ _(None — this is the first implementation of the specification)_
 
 ## Impact
 
-- **Code**: New package `@trust402/roles` under `packages/roles/` — circuit source, TypeScript wrappers, registration scripts, preset manifests, SKILL.md
+- **Code**: New package `@trust402/roles` under `packages/roles/` — circuit source, TypeScript wrappers, registration script, preset manifest, SKILL.md
 - **APIs**: Four exported functions (`witness`, `prove`, `submit`, `connect`) and three exported types (`AgentCredential`, `PaymentGate`, `CircuitWitness`)
 - **Dependencies**: `@lemmaoracle/sdk` ^0.0.22, `@lemmaoracle/spec` ^0.0.22, `ramda`, `circomlib`, `snarkjs`, `circomlibjs`
-- **Systems**: Lemma oracle (circuit/schema registration), IPFS/Pinata (artifact storage), x402 protocol (proof header attachment)
+- **Systems**: Lemma oracle (circuit registration), IPFS/Pinata (artifact storage), x402 protocol (proof header attachment)
 
 ## Non-goals
 

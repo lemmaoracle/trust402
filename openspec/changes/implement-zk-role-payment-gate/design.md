@@ -90,6 +90,20 @@ The existing codebase has Phase 1–6 tasks already implemented (all 26 tasks ma
 
 **Rationale**: Consistency with the broader Lemma monorepo's functional programming style. Test files are exempt to allow imperative test scaffolding.
 
+### D8: No schema registration — circuit artifacts are not normalize artifacts
+
+**Decision**: The package does NOT register a schema with the Lemma oracle. Only `circuits.register` is used. The `register-schema.ts` script is removed.
+
+**Rationale**: The Lemma SDK distinguishes two artifact types:
+- **Schema normalize WASM** (`schemas.register`): A wasm-bindgen module exporting a `normalize(rawJson) → normJson` function. Used by `schema.define()` to transform raw JSON into normalized form. This is a completely different WASM from the circuit.
+- **Circuit WASM** (`circuits.register`): A circom-compiled WASM used by `prover.prove()` via `snarkjs.groth16.fullProve(witness, wasmBuf, zkeyBuf)`. This WASM has no `normalize` export.
+
+The initial implementation incorrectly uploaded the circom-compiled circuit WASM as a schema normalize artifact. This would cause `define()` to fail at runtime because the circom WASM does not export a `normalize` function. The `role-spend-limit-v1` circuit references the `agent-identity-authority-v1` schema's normalized fields (via FR-017) but does not need to register its own schema — that schema is expected to be registered separately by the credential issuer.
+
+**Alternatives considered**:
+- Build a dedicated normalize WASM for the schema: Adds complexity without clear value. The `agent-identity-authority-v1` schema already exists and is registered by the Lemma agent package. A new schema ID `role-spend-limit-v1` would be redundant.
+- Register the circuit WASM as both schema and circuit artifacts: Incorrect. The two WASM formats are fundamentally incompatible.
+
 ## Risks / Trade-offs
 
 - **[SDK version coupling]** → The package is tightly coupled to `@lemmaoracle/sdk` 0.0.22+. API changes in the SDK may require updates. Mitigation: Pin SDK version in `package.json` and validate on upgrade.

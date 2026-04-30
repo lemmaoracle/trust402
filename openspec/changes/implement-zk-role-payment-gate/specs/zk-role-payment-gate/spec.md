@@ -63,16 +63,12 @@ The system SHALL provide a `connect(apiBase)` curried factory that creates a Lem
 - **WHEN** `connect` is called with an API base URL and then with an API key
 - **THEN** a configured LemmaClient instance is returned for use with prove and submit
 
-### Requirement: Circuit and schema registration
-The system SHALL provide registration scripts that upload circuit artifacts to IPFS via Pinata and register schema and circuit metadata with the Lemma oracle using `schemas.register` and `circuits.register`.
+### Requirement: Circuit registration
+The system SHALL provide a registration script that uploads circuit artifacts to IPFS via Pinata and registers circuit metadata with the Lemma oracle using `circuits.register`. The `schemas.register` API MUST NOT be used for circuit artifacts — schema registration requires a dedicated normalize WASM (wasm-bindgen format exporting a `normalize` function), which is distinct from the circom-compiled circuit WASM used for proof generation.
 
 #### Scenario: Successful circuit registration
 - **WHEN** compiled circuit artifacts and Pinata API keys are available and the registration script runs
-- **THEN** artifacts are uploaded to IPFS and circuit metadata is registered with the oracle
-
-#### Scenario: Successful schema registration
-- **WHEN** schema metadata conforming to `agent-identity-authority-v1` normalized fields is provided
-- **THEN** the schema is registered and discoverable via `schemas.getById`
+- **THEN** artifacts are uploaded to IPFS and circuit metadata is registered with the oracle via `circuits.register`
 
 ### Requirement: Proof-before-payment enforcement protocol
 The system SHALL provide a SKILL.md template that defines a mandatory 5-step protocol (load credential, build witness, generate proof, attach headers, send payment) for autonomous agents, with halt conditions for revoked or incomplete credentials.
