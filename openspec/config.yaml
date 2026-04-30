@@ -1,0 +1,51 @@
+schema: spec-driven
+
+context: |
+  ## Tech Stack
+  - TypeScript 5.8+ (ES2022, ESNext modules), Circom 2.1.x
+  - Primary Dependencies: @lemmaoracle/sdk 0.0.22+, @lemmaoracle/spec 0.0.22+, circomlib 2.0.5, snarkjs 0.7.5, circomlibjs 0.1.7
+  - Storage: IPFS (Pinata) for circuit artifacts; Lemma oracle API for metadata
+  - Testing: Vitest 3.x (co-located *.test.ts)
+  - Target Platform: Node.js 20+, pnpm workspace
+  - Project Type: Library (npm package @trust402/roles) with embedded Circom circuit
+
+  ## Functional Programming Rules (NON-NEGOTIABLE)
+  - eslint-plugin-functional strict preset is active
+  - TypeScript strict mode everywhere
+  - No if/switch statements. Use R.cond, R.ifElse, R.when, R.unless, or ternary expressions
+  - No let/var. Only const
+  - No class. Use plain objects and functions
+  - No for/while/do..while. Use R.map, R.reduce, R.filter, Array.prototype.map, etc.
+  - No throw in sync code. Return Promise.reject(new Error(...)) for async errors
+  - No mutation. Use R.assoc, R.dissoc, spread operators, structuredClone
+  - All data structures use Readonly<> / ReadonlyArray<>
+
+  ## Exemptions
+  - Test files (*.test.ts, *.spec.ts) are exempt from FP rules
+  - Smart contracts in packages/contracts are exempt from FP rules
+
+  ## Conventions
+  - Co-locate tests: foo.ts -> foo.test.ts
+  - SDK delegation: All cryptographic operations delegate to @lemmaoracle/sdk
+  - USD cents are the unit for spend limits and gate ceilings
+  - Groth16 proving system with BN254 curve
+  - Poseidon hash inside circuit; SHA-256 with top-nibble masking outside circuit
+
+  ## Ramda Patterns
+  - Branching: R.cond, R.ifElse, R.when, R.unless
+  - Predicates: R.both, R.either, R.allPass, R.anyPass, R.complement
+  - Safe values: R.defaultTo, R.pathOr, R.tryCatch
+  - Transformation: R.pipe, R.compose, R.map, R.filter, R.reduce, R.assoc, R.dissoc
+
+# Per-artifact rules (optional)
+rules:
+  proposal:
+    - Reference the Lemma SDK for all cryptographic operations
+    - Include a "Non-goals" section
+  design:
+    - All TypeScript code must follow FP rules
+    - Circuit design must use Poseidon for commitment binding
+  tasks:
+    - Break tasks into chunks of max 2 hours
+    - Mark parallel tasks with [P]
+    - Tag tasks with user story ([US1], [US2], [US3])
