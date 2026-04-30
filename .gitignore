@@ -141,3 +141,15 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Circom / snarkjs build artifacts
+**/circuits/build/
+*.r1cs
+*.sym
+*.wasm
+*.zkey
+*.ptau
+
+# OS files
+.DS_Store
+Thumbs.db

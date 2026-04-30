@@ -1,0 +1,9 @@
+---
+alwaysApply: true
+---
+
+<!-- OPENSPEC START -->
+For project context, tech stack, and conventions, read `openspec/config.yaml`.
+For the current change, read artifacts under `openspec/changes/implement-zk-role-payment-gate/`.
+For the main specification, read `openspec/specs/zk-role-payment-gate/spec.md`.
+<!-- OPENSPEC END -->

@@ -1,0 +1,21 @@
+{
+  "circuitId": "role-spend-limit-v1",
+  "schema": "role-spend-limit-v1",
+  "description": "Combined hasRole + spendLimitBelow predicate for agent payment gating",
+  "inputs": ["requiredRoleHash", "maxSpend", "nowSec"],
+  "verifiers": [
+    {
+      "type": "onchain",
+      "address": "0x0000000000000000000000000000000000000000",
+      "chainId": 84532,
+      "alg": "groth16-bn254-snarkjs"
+    }
+  ],
+  "artifact": {
+    "location": {
+      "type": "https",
+      "wasm": "https://trust402.dev/artifacts/role-spend-limit.wasm",
+      "zkey": "https://trust402.dev/artifacts/role-spend-limit_final.zkey"
+    }
+  }
+}
