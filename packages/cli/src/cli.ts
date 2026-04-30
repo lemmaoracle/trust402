@@ -89,10 +89,10 @@ const validateCommand = new Command("validate")
         })();
   });
 
-// ── Prove command ─────────────────────────────────────────────────────
+// ── Prove command (agent-identity-v1) ─────────────────────────────────
 
 const proveCommand = new Command("prove")
-  .description("Execute commit → prove → submit pipeline for a credential")
+  .description("Execute commit → prove → submit pipeline for agent-identity-v1")
   .requiredOption("--credential <path>", "Path to credential JSON file")
   .requiredOption("--api-key <key>", "Lemma API key")
   .option("--dry-run", "Skip the submit step")
@@ -136,7 +136,7 @@ const proveCommand = new Command("prove")
 
 // ── Program ──────────────────────────────────────────────────────────
 
-export const program = new Command("trust402-agent")
+export const program = new Command("trust402")
   .description("Trust402 agent identity CLI")
   .version("0.0.1")
   .exitOverride()

@@ -24,7 +24,7 @@ importers:
         specifier: ^8.0.0
         version: 8.59.1(eslint@9.39.4)(typescript@5.9.3)
 
-  packages/roles:
+  packages/cli:
     dependencies:
       '@lemmaoracle/agent':
         specifier: ^0.0.24-alpha.1
@@ -51,6 +51,86 @@ importers:
       '@types/ramda':
         specifier: ^0.30.0
         version: 0.30.2
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.4
+      eslint-config-prettier:
+        specifier: ^10.0.0
+        version: 10.1.8(eslint@9.39.4)
+      eslint-plugin-functional:
+        specifier: ^7.0.0
+        version: 7.3.1(eslint@9.39.4)(typescript@5.9.3)
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.8.0
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.0.0
+        version: 8.59.1(eslint@9.39.4)(typescript@5.9.3)
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)
+
+  packages/identity:
+    dependencies:
+      '@lemmaoracle/agent':
+        specifier: ^0.0.24-alpha.1
+        version: 0.0.24-alpha.1
+      '@lemmaoracle/sdk':
+        specifier: ^0.0.23
+        version: 0.0.23
+      '@lemmaoracle/spec':
+        specifier: ^0.0.22
+        version: 0.0.22
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.0.0
+        version: 9.39.4
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.4
+      eslint-config-prettier:
+        specifier: ^10.0.0
+        version: 10.1.8(eslint@9.39.4)
+      eslint-plugin-functional:
+        specifier: ^7.0.0
+        version: 7.3.1(eslint@9.39.4)(typescript@5.9.3)
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.8.0
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.0.0
+        version: 8.59.1(eslint@9.39.4)(typescript@5.9.3)
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)
+
+  packages/roles:
+    dependencies:
+      '@lemmaoracle/agent':
+        specifier: ^0.0.24-alpha.1
+        version: 0.0.24-alpha.1
+      '@lemmaoracle/sdk':
+        specifier: ^0.0.23
+        version: 0.0.23
+      '@lemmaoracle/spec':
+        specifier: ^0.0.22
+        version: 0.0.22
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.0.0
+        version: 9.39.4
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1

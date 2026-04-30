@@ -46,8 +46,8 @@ const uploadToPinata = (filePath: string, fileName: string): Promise<string> => 
 const buildCircuitMeta = (wasmUrl: string, zkeyUrl: string): CircuitMeta => ({
   circuitId: "role-spend-limit-v1",
   schema: "role-spend-limit-v1",
-  description: "Combined hasRole + spendLimitBelow predicate for agent payment gating",
-  inputs: ["requiredRoleHash", "maxSpend", "nowSec"],
+  description: "Combined hasRole + spendLimitBelow predicate with cross-proof correlation via credentialCommitment",
+  inputs: ["requiredRoleHash", "maxSpend", "nowSec", "roleGateCommitment", "credentialCommitmentPublic"],
   verifiers: [{
     type: "onchain",
     address: VERIFIER_ADDRESS,
@@ -68,12 +68,12 @@ const main = async (): Promise<void> => {
     return Promise.reject(new Error("Missing LEMMA_API_KEY, PINATA_API_KEY, or PINATA_SECRET_API_KEY"));
   }
 
-  const wasmPath = path.join(PKG_ROOT, "circuits", "build", "role-spend-limit_js", "role-spend-limit.wasm");
-  const zkeyPath = path.join(PKG_ROOT, "circuits", "build", "role-spend-limit_final.zkey");
+  const wasmPath = path.join(PKG_ROOT, "circuits", "build", "role-spend-limit-v1_js", "role-spend-limit-v1.wasm");
+  const zkeyPath = path.join(PKG_ROOT, "circuits", "build", "role-spend-limit-v1_final.zkey");
 
   const [wasmUrl, zkeyUrl] = await Promise.all([
-    uploadToPinata(wasmPath, "role-spend-limit.wasm"),
-    uploadToPinata(zkeyPath, "role-spend-limit_final.zkey"),
+    uploadToPinata(wasmPath, "role-spend-limit-v1.wasm"),
+    uploadToPinata(zkeyPath, "role-spend-limit-v1_final.zkey"),
   ]);
 
   const client: LemmaClient = create({

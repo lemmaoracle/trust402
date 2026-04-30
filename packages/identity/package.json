@@ -1,7 +1,7 @@
 {
-  "name": "@trust402/roles",
+  "name": "@trust402/identity",
   "version": "0.0.1",
-  "description": "ZK role-enforcement circuits for autonomous agent payments",
+  "description": "Agent identity proof (agent-identity-v1) commit, prove, and submit for Trust402",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,8 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix",
-    "register": "tsx scripts/register-circuit.ts"
+    "lint:fix": "eslint src/ --fix"
   },
   "dependencies": {
     "@lemmaoracle/agent": "^0.0.24-alpha.1",
@@ -30,11 +29,9 @@
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "^22.0.0",
-    "dotenv": "^16.4.7",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-functional": "^7.0.0",
-    "poseidon-lite": "0.3.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.0.0",

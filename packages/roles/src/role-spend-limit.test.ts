@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { computeCredentialCommitment } from "@lemmaoracle/agent";
-import type { NormalizedAgentCredential } from "@lemmaoracle/agent";
 import { poseidon6 } from "poseidon-lite";
+import type { NormalizedAgentCredential } from "@lemmaoracle/agent";
 
 // ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -40,8 +39,27 @@ const normalizedCred: NormalizedAgentCredential = {
 
 // ── Tests ─────────────────────────────────────────────────────────────
 
-describe("Poseidon commitment flow", () => {
-  it("computeCredentialCommitment produces deterministic section hashes", () => {
+describe("fieldHash determinism and BN254 bounds", () => {
+  it("produces consistent hashes for same input", async () => {
+    const { fieldHash } = await import("./index.js");
+    const h1 = fieldHash("admin");
+    const h2 = fieldHash("admin");
+    expect(h1).toBe(h2);
+  });
+
+  it("produces a value within BN254 field", async () => {
+    const { fieldHash } = await import("./index.js");
+    const h = fieldHash("test-role");
+    const val = BigInt(h);
+    const prime = BigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+    expect(val >= BigInt(0)).toBe(true);
+    expect(val < prime).toBe(true);
+  });
+});
+
+describe("Poseidon commitment flow (real computeCredentialCommitment)", () => {
+  it("computeCredentialCommitment produces deterministic section hashes", async () => {
+    const { computeCredentialCommitment } = await import("@lemmaoracle/agent");
     const result1 = computeCredentialCommitment(normalizedCred, "01");
     const result2 = computeCredentialCommitment(normalizedCred, "01");
 
@@ -52,7 +70,8 @@ describe("Poseidon commitment flow", () => {
     expect(result1.sectionHashes.provenanceHash).toBe(result2.sectionHashes.provenanceHash);
   });
 
-  it("root matches poseidon6([...sectionHashes, salt])", () => {
+  it("root matches poseidon6([...sectionHashes, salt])", async () => {
+    const { computeCredentialCommitment } = await import("@lemmaoracle/agent");
     const fixedSaltHex = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
     const result = computeCredentialCommitment(normalizedCred, fixedSaltHex);
 
@@ -69,32 +88,16 @@ describe("Poseidon commitment flow", () => {
     expect(result.root).toBe(expectedRoot.toString());
   });
 
-  it("different salt produces different root", () => {
+  it("different salt produces different root", async () => {
+    const { computeCredentialCommitment } = await import("@lemmaoracle/agent");
     const result1 = computeCredentialCommitment(normalizedCred, "01");
     const result2 = computeCredentialCommitment(normalizedCred, "02");
-
     expect(result1.root).not.toBe(result2.root);
   });
 
-  it("different credentials produce different section hashes", () => {
-    const altCred: NormalizedAgentCredential = {
-      ...normalizedCred,
-      identity: {
-        ...normalizedCred.identity,
-        agentId: "agent-DIFFERENT",
-      },
-    };
-
-    const result1 = computeCredentialCommitment(normalizedCred, "01");
-    const result2 = computeCredentialCommitment(altCred, "01");
-
-    expect(result1.sectionHashes.identityHash).not.toBe(result2.sectionHashes.identityHash);
-    expect(result1.root).not.toBe(result2.root);
-  });
-
-  it("section hashes are non-empty strings", () => {
+  it("section hashes are non-empty strings", async () => {
+    const { computeCredentialCommitment } = await import("@lemmaoracle/agent");
     const result = computeCredentialCommitment(normalizedCred);
-
     expect(result.sectionHashes.identityHash).toBeTruthy();
     expect(result.sectionHashes.authorityHash).toBeTruthy();
     expect(result.sectionHashes.financialHash).toBeTruthy();

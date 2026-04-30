@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { AgentCredential, CommitOutput, PaymentGate, CircuitWitness } from "./index.js";
+import type { AgentCredential, CommitOutput } from "./index.js";
 import type { ProveOutput, LemmaClient } from "@lemmaoracle/sdk";
-import { poseidon4 } from "poseidon-lite";
 
 // ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -99,6 +98,7 @@ const mockClient = { apiKey: "test" } as unknown as LemmaClient;
 
 const mockProve = vi.fn().mockResolvedValue(mockProveOutput);
 const mockSubmit = vi.fn().mockResolvedValue(mockSubmission);
+const mockAgentCommit = vi.fn().mockResolvedValue(mockCommitOutput);
 const mockCreate = vi.fn().mockReturnValue(mockClient);
 
 vi.mock("@lemmaoracle/sdk", () => ({
@@ -108,7 +108,7 @@ vi.mock("@lemmaoracle/sdk", () => ({
 }));
 
 vi.mock("@lemmaoracle/agent", () => ({
-  commit: vi.fn(),
+  commit: mockAgentCommit,
   computeCredentialCommitment: vi.fn(),
   credential: vi.fn(),
   validate: vi.fn(),
@@ -116,100 +116,26 @@ vi.mock("@lemmaoracle/agent", () => ({
 
 // ── Tests ─────────────────────────────────────────────────────────────
 
-describe("fieldHash", () => {
-  it("produces a deterministic BN254 field element string", async () => {
-    const { fieldHash } = await import("./index.js");
-    const h1 = fieldHash("purchaser");
-    const h2 = fieldHash("purchaser");
-    expect(h1).toBe(h2);
-    expect(h1).toMatch(/^\d+$/);
-  });
-
-  it("produces different hashes for different role names", async () => {
-    const { fieldHash } = await import("./index.js");
-    const h1 = fieldHash("purchaser");
-    const h2 = fieldHash("viewer");
-    expect(h1).not.toBe(h2);
-  });
-});
-
-describe("witness", () => {
-  it("roleHash equals requiredRoleHash for same gate role", async () => {
-    const { witness } = await import("./index.js");
-    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(sampleCred, gate, mockCommitOutput);
-    expect(w.roleHash).toBe(w.requiredRoleHash);
-  });
-
-  it("spendLimit defaults to '0' when absent from credential", async () => {
-    const { witness } = await import("./index.js");
-    const credNoSpend: AgentCredential = {
-      ...sampleCred,
-      financial: { currency: "USD", paymentPolicy: "auto-approve" },
-    };
-    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(credNoSpend, gate, mockCommitOutput);
-    expect(w.spendLimit).toBe("0");
-  });
-
-  it("spendLimit from credential financial section", async () => {
-    const { witness } = await import("./index.js");
-    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(sampleCred, gate, mockCommitOutput);
-    expect(w.spendLimit).toBe("50000");
-  });
-
-  it("credentialCommitment equals credentialCommitmentPublic", async () => {
-    const { witness } = await import("./index.js");
-    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(sampleCred, gate, mockCommitOutput);
-    expect(w.credentialCommitment).toBe(w.credentialCommitmentPublic);
-    expect(w.credentialCommitment).toBe(mockCommitOutput.root);
-  });
-
-  it("roleGateCommitment matches poseidon4 computation", async () => {
-    const { witness, fieldHash } = await import("./index.js");
-    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(sampleCred, gate, mockCommitOutput);
-
-    const expected = poseidon4([
-      BigInt(mockCommitOutput.root),
-      BigInt(fieldHash(gate.role)),
-      BigInt(w.spendLimit),
-      BigInt(w.salt),
-    ]).toString();
-
-    expect(w.roleGateCommitment).toBe(expected);
-  });
-
-  it("produces deterministic output for same inputs (ignoring nowSec)", async () => {
-    const { witness } = await import("./index.js");
-    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w1 = witness(sampleCred, gate, mockCommitOutput);
-    const w2 = witness(sampleCred, gate, mockCommitOutput);
-    expect(w1.roleHash).toBe(w2.roleHash);
-    expect(w1.spendLimit).toBe(w2.spendLimit);
-    expect(w1.roleGateCommitment).toBe(w2.roleGateCommitment);
-  });
-});
-
 describe("prove", () => {
   beforeEach(() => {
     mockProve.mockClear();
   });
 
-  it("delegates to prover.prove with role-spend-limit-v1 circuit", async () => {
-    const { prove, witness } = await import("./index.js");
-    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(sampleCred, gate, mockCommitOutput);
+  it("delegates to prover.prove with agent-identity-v1 circuit and commitOutput as witness", async () => {
+    const { prove } = await import("./index.js");
 
-    const result = await prove(mockClient, w);
+    const result = await prove(mockClient, mockCommitOutput);
 
     expect(mockProve).toHaveBeenCalledWith(mockClient, {
-      circuitId: "role-spend-limit-v1",
-      witness: w,
+      circuitId: "agent-identity-v1",
+      witness: mockCommitOutput,
     });
     expect(result).toEqual(mockProveOutput);
+  });
+
+  it("is exported as a function", async () => {
+    const { prove } = await import("./index.js");
+    expect(typeof prove).toBe("function");
   });
 });
 
@@ -218,17 +144,22 @@ describe("submit", () => {
     mockSubmit.mockClear();
   });
 
-  it("delegates to proofs.submit with role-spend-limit-v1 circuitId", async () => {
+  it("delegates to proofs.submit with agent-identity-v1 circuitId", async () => {
     const { submit } = await import("./index.js");
 
     await submit(mockClient, "docHash123", mockProveOutput);
 
     expect(mockSubmit).toHaveBeenCalledWith(mockClient, {
       docHash: "docHash123",
-      circuitId: "role-spend-limit-v1",
+      circuitId: "agent-identity-v1",
       proof: mockProveOutput.proof,
       inputs: mockProveOutput.inputs,
     });
+  });
+
+  it("is exported as a function", async () => {
+    const { submit } = await import("./index.js");
+    expect(typeof submit).toBe("function");
   });
 });
 
@@ -243,21 +174,16 @@ describe("connect", () => {
   });
 });
 
-describe("PaymentGate type", () => {
-  it("accepts a valid PaymentGate", () => {
-    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    expect(gate.role).toBe("purchaser");
-    expect(gate.maxSpend).toBe(100000);
+describe("re-exported types", () => {
+  it("AgentCredential is importable", () => {
+    const cred: AgentCredential = sampleCred;
+    expect(cred.schema).toBe("agent-identity-authority-v1");
   });
-});
 
-describe("CircuitWitness type", () => {
-  it("accepts a valid CircuitWitness", async () => {
-    const { witness } = await import("./index.js");
-    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w: CircuitWitness = witness(sampleCred, gate, mockCommitOutput);
-    expect(w.credentialCommitment).toBeTruthy();
-    expect(w.roleHash).toBeTruthy();
-    expect(w.roleGateCommitment).toBeTruthy();
+  it("CommitOutput is importable", () => {
+    const output: CommitOutput = mockCommitOutput;
+    expect(output.root).toBeTruthy();
+    expect(output.sectionHashes).toBeTruthy();
+    expect(output.salt).toBeTruthy();
   });
 });
