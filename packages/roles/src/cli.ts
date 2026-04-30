@@ -3,7 +3,7 @@ import { Command } from "commander";
 import * as R from "ramda";
 import { credential, validate, commit as agentCommit } from "@lemmaoracle/agent";
 import { create, prover, proofs } from "@lemmaoracle/sdk";
-import type { AgentCredential, AgentCredentialInput } from "@lemmaoracle/agent";
+import type { AgentCredentialInput } from "@lemmaoracle/agent";
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
