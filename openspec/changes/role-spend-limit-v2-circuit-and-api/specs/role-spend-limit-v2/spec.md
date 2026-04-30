@@ -111,7 +111,7 @@ The system SHALL provide a `connect(apiBase)` curried factory that creates a Lem
 
 ### Requirement: Package split — identity package
 
-The system SHALL provide a `@trust402/identity` package containing `commit`, `prove`, `submit`, and `connect` functions targeting the `agent-identity-v1` circuit, extracted from the current `@trust402/roles` package.
+The system SHALL provide a `@trust402/identity` package containing `commit`, `prove`, `submit`, and `connect` functions targeting the `agent-identity-v1` circuit, extracted from the current `@trust402/roles` package. The package SHALL NOT contain a CLI; all CLI functionality is in `@trust402/cli`.
 
 #### Scenario: Identity commit
 
@@ -127,6 +127,35 @@ The system SHALL provide a `@trust402/identity` package containing `commit`, `pr
 
 - **WHEN** `submit` is called with a `LemmaClient`, `docHash`, and `ProveOutput`
 - **THEN** it delegates to `proofs.submit(client, { docHash, circuitId: "agent-identity-v1", proof, inputs })`
+
+### Requirement: CLI consolidation — @trust402/cli
+
+The system SHALL provide a `@trust402/cli` package that serves as the single CLI entry point for Trust402 agent identity operations. The CLI SHALL expose `create`, `validate`, and `prove` commands targeting the `agent-identity-v1` pipeline. The `@trust402/identity` and `@trust402/roles` packages SHALL NOT contain CLI files.
+
+#### Scenario: CLI program name
+
+- **WHEN** the CLI is invoked
+- **THEN** the program name is `trust402` and the binary is `trust402`
+
+#### Scenario: Create command
+
+- **WHEN** `trust402 create --agent-id <id> --subject-id <id> --roles <roles> --issuer-id <id>` is run
+- **THEN** a validated `AgentCredential` JSON is written to stdout
+
+#### Scenario: Validate command
+
+- **WHEN** `trust402 validate <file>` is run with a valid credential file
+- **THEN** "Valid" is written to stdout
+
+#### Scenario: Prove command
+
+- **WHEN** `trust402 prove --credential <path> --api-key <key>` is run
+- **THEN** the commit → prove → submit pipeline executes for `agent-identity-v1` and the result JSON is written to stdout
+
+#### Scenario: No role-spend-limit CLI commands
+
+- **WHEN** the CLI is inspected
+- **THEN** no `witness` or `role-prove` commands exist, as these are programmatic operations handled by the `@trust402/roles` API
 
 ### Requirement: Circuit registration for role-spend-limit-v2
 

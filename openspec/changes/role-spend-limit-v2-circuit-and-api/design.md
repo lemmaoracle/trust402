@@ -82,6 +82,16 @@ The two-proof flow (identity proof π₁ + role proof π₂) requires the server
 
 **Rationale**: Existing proofs generated with v1 (even though broken) may be recorded on-chain. A new circuitId avoids confusion and allows clean migration. The v1 circuit can be deprecated but not deleted.
 
+### D7: CLI consolidation into `@trust402/cli`
+
+**Decision**: Consolidate all CLI commands into a single `@trust402/cli` package. The CLI operator's primary concern is "giving an agent identity" — `create`, `validate`, and `prove` (agent-identity-v1 pipeline). Role management (witness, role-prove) is a programmatic concern handled via `@trust402/roles` API calls, not CLI commands.
+
+**Rationale**: The CLI's audience is the demo runner / credential issuer who creates and validates agent identities and submits identity proofs. Role-spend-limit proofs are generated programmatically by the agent's payment middleware, not interactively by a human operator. Including `witness` and `role-prove` in the CLI would expose internal plumbing that has no interactive use case. Removing CLI files from `@trust402/identity` and `@trust402/roles` eliminates code duplication and makes `commander`/`ramda` a concern of only the CLI package.
+
+**Alternatives considered**:
+- Keep separate CLIs in each package: Duplicates `create`/`validate` commands and forces users to switch between `trust402-identity` and `trust402-roles` binaries
+- Add `witness` and `role-prove` commands to the unified CLI: No interactive use case for these operations; they are always called programmatically by the agent runtime
+
 ## Risks / Trade-offs
 
 - **[Circuit re-compilation required]** → All artifacts (wasm, zkey) must be rebuilt and re-registered. Mitigation: The `circuits/scripts/build.sh` and `scripts/register-circuit.ts` scripts already exist and only need the circuit ID update.
