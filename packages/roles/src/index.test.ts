@@ -1,6 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { witness, connect, prove, submit } from "./index.js";
-import type { AgentCredential, PaymentGate, CircuitWitness } from "./index.js";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { AgentCredential, CommitOutput, PaymentGate } from "./index.js";
+import type { ProveOutput, LemmaClient } from "@lemmaoracle/sdk";
+
+// ── Fixtures ──────────────────────────────────────────────────────────
 
 const sampleCred: AgentCredential = {
   schema: "agent-identity-authority-v1",
@@ -11,8 +13,8 @@ const sampleCred: AgentCredential = {
     orgId: "acme",
   },
   authority: {
-    roles: ["purchaser", "viewer"],
-    scopes: ["procurement", "reporting"],
+    roles: [{ name: "purchaser" }, { name: "viewer" }],
+    scopes: [{ name: "procurement" }, { name: "reporting" }],
     permissions: [
       { resource: "payments", action: "create" },
       { resource: "reports", action: "read" },
@@ -27,105 +29,169 @@ const sampleCred: AgentCredential = {
     issuedAt: 1745900000,
     expiresAt: 1777436000,
     revoked: false,
+    revocationRef: "",
   },
   provenance: {
     issuerId: "did:lemma:org:trust-anchor",
+    sourceSystem: "",
+    generatorId: "",
+    chainContext: {
+      chainId: 1,
+      network: "mainnet",
+    },
   },
 };
 
-const purchaserGate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-const adminGate: PaymentGate = { role: "admin", maxSpend: 50000 };
+const mockCommitOutput: CommitOutput = {
+  normalized: {
+    schema: "agent-identity-authority-v1",
+    identity: {
+      agentId: "agent-0xabc123",
+      subjectId: "did:lemma:agent:0xabc123",
+      controllerId: "did:lemma:org:acme",
+      orgId: "acme",
+    },
+    authority: {
+      roles: "purchaser,viewer",
+      scopes: "procurement,reporting",
+      permissions: "payments:create,reports:read",
+    },
+    financial: {
+      spendLimit: "50000",
+      currency: "USD",
+      paymentPolicy: "auto-approve-below-limit",
+    },
+    lifecycle: {
+      issuedAt: "1745900000",
+      expiresAt: "1777436000",
+      revoked: "false",
+      revocationRef: "",
+    },
+    provenance: {
+      issuerId: "did:lemma:org:trust-anchor",
+      sourceSystem: "",
+      generatorId: "",
+      chainId: "1",
+      network: "mainnet",
+    },
+  },
+  root: "1234567890123456789012345678901234567890123456789012345678901234",
+  sectionHashes: {
+    identityHash: "1111111111111111111111111111111111111111111111111111111111111111",
+    authorityHash: "2222222222222222222222222222222222222222222222222222222222222222",
+    financialHash: "3333333333333333333333333333333333333333333333333333333333333333",
+    lifecycleHash: "4444444444444444444444444444444444444444444444444444444444444444",
+    provenanceHash: "5555555555555555555555555555555555555555555555555555555555555555",
+  },
+  salt: "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+};
 
-describe("witness", () => {
-  it("maps credential + gate into circuit input shape", () => {
-    const w = witness(sampleCred, purchaserGate);
+const mockProveOutput: ProveOutput = {
+  proof: "mock-proof-string",
+  inputs: ["1234567890123456789012345678901234567890123456789012345678901234"],
+};
 
-    expect(w.credentialCommitment).toBeTruthy();
-    expect(w.roleHash).toBeTruthy();
-    expect(w.spendLimit).toBe("50000");
-    expect(w.requiredRoleHash).toBe(w.roleHash);
-    expect(w.maxSpend).toBe("100000");
-    expect(w.nowSec).toMatch(/^\d+$/);
-    expect(w.salt).toBeTruthy();
-  });
+const mockSubmission = { txHash: "0xabc123def456", status: "submitted" };
+const mockClient = { apiKey: "test" } as unknown as LemmaClient;
 
-  it("produces identical roleHash for same gate role", () => {
-    const w1 = witness(sampleCred, purchaserGate);
-    const w2 = witness(sampleCred, purchaserGate);
-    expect(w1.roleHash).toBe(w2.roleHash);
-    expect(w1.requiredRoleHash).toBe(w2.requiredRoleHash);
-  });
+// ── Mocks ─────────────────────────────────────────────────────────────
 
-  it("produces different roleHash for different gate roles", () => {
-    const w1 = witness(sampleCred, purchaserGate);
-    const w2 = witness(sampleCred, adminGate);
-    expect(w1.roleHash).not.toBe(w2.roleHash);
-  });
+const mockProve = vi.fn().mockResolvedValue(mockProveOutput);
+const mockSubmit = vi.fn().mockResolvedValue(mockSubmission);
+const mockAgentCommit = vi.fn().mockResolvedValue(mockCommitOutput);
+const mockCreate = vi.fn().mockReturnValue(mockClient);
 
-  it("defaults spendLimit to 0 when financial.spendLimit is absent", () => {
-    const credNoLimit = { ...sampleCred, financial: { currency: "USD" } };
-    const w = witness(credNoLimit as AgentCredential, purchaserGate);
-    expect(w.spendLimit).toBe("0");
-  });
+vi.mock("@lemmaoracle/sdk", () => ({
+  create: mockCreate,
+  prover: { prove: mockProve },
+  proofs: { submit: mockSubmit },
+}));
 
-  it("defaults spendLimit to 0 when financial object has no spendLimit key", () => {
-    const credNoLimit = { ...sampleCred, financial: {} };
-    const w = witness(credNoLimit as AgentCredential, purchaserGate);
-    expect(w.spendLimit).toBe("0");
-  });
+vi.mock("@lemmaoracle/agent", () => ({
+  commit: mockAgentCommit,
+  computeCredentialCommitment: vi.fn(),
+  credential: vi.fn(),
+  validate: vi.fn(),
+}));
 
-  it("produces non-empty salt that differs from roleHash", () => {
-    const w = witness(sampleCred, purchaserGate);
-    expect(w.salt).toBeTruthy();
-    expect(w.salt).not.toBe(w.roleHash);
-  });
-
-  it("accepts spendLimit equal to gate ceiling (edge case: less-than-or-equal)", () => {
-    const exactLimitCred: AgentCredential = {
-      ...sampleCred,
-      financial: { ...sampleCred.financial, spendLimit: 100000 },
-    };
-    const w = witness(exactLimitCred, purchaserGate);
-    expect(w.spendLimit).toBe("100000");
-    expect(w.maxSpend).toBe("100000");
-  });
-
-  it("handles zero-ceiling gate (read-only)", () => {
-    const readOnlyGate: PaymentGate = { role: "viewer", maxSpend: 0 };
-    const zeroLimitCred: AgentCredential = {
-      ...sampleCred,
-      financial: { spendLimit: 0, currency: "USD" },
-    };
-    const w = witness(zeroLimitCred, readOnlyGate);
-    expect(w.spendLimit).toBe("0");
-    expect(w.maxSpend).toBe("0");
-  });
-
-  it("hashes only the gate role, not all credential roles", () => {
-    const w = witness(sampleCred, purchaserGate);
-    const adminW = witness(sampleCred, adminGate);
-    expect(w.roleHash).not.toBe(adminW.roleHash);
-    expect(w.requiredRoleHash).not.toBe(adminW.requiredRoleHash);
-  });
-});
-
-describe("connect", () => {
-  it("returns a curried function that creates a LemmaClient", () => {
-    const factory = connect("https://example.com");
-    expect(typeof factory).toBe("function");
-    const client = factory("test-api-key");
-    expect(client).toBeTruthy();
-  });
-});
+// ── Tests ─────────────────────────────────────────────────────────────
 
 describe("prove", () => {
-  it("is exported as a function", () => {
+  beforeEach(() => {
+    mockProve.mockClear();
+  });
+
+  it("delegates to prover.prove with agent-identity-v1 circuit and commitOutput as witness", async () => {
+    const { prove } = await import("./index.js");
+
+    const result = await prove(mockClient, mockCommitOutput);
+
+    expect(mockProve).toHaveBeenCalledWith(mockClient, {
+      circuitId: "agent-identity-v1",
+      witness: mockCommitOutput,
+    });
+    expect(result).toEqual(mockProveOutput);
+  });
+
+  it("is exported as a function", async () => {
+    const { prove } = await import("./index.js");
     expect(typeof prove).toBe("function");
   });
 });
 
 describe("submit", () => {
-  it("is exported as a function", () => {
+  beforeEach(() => {
+    mockSubmit.mockClear();
+  });
+
+  it("delegates to proofs.submit with agent-identity-v1 circuitId", async () => {
+    const { submit } = await import("./index.js");
+
+    await submit(mockClient, "docHash123", mockProveOutput);
+
+    expect(mockSubmit).toHaveBeenCalledWith(mockClient, {
+      docHash: "docHash123",
+      circuitId: "agent-identity-v1",
+      proof: mockProveOutput.proof,
+      inputs: mockProveOutput.inputs,
+    });
+  });
+
+  it("is exported as a function", async () => {
+    const { submit } = await import("./index.js");
     expect(typeof submit).toBe("function");
+  });
+});
+
+describe("connect", () => {
+  it("returns a curried function that creates a LemmaClient", async () => {
+    const { connect } = await import("./index.js");
+    const factory = connect("https://example.com");
+    expect(typeof factory).toBe("function");
+    const client = factory("test-api-key");
+    expect(client).toBeTruthy();
+    expect(mockCreate).toHaveBeenCalledWith({ apiBase: "https://example.com", apiKey: "test-api-key" });
+  });
+});
+
+describe("PaymentGate type", () => {
+  it("accepts a valid PaymentGate", () => {
+    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
+    expect(gate.role).toBe("purchaser");
+    expect(gate.maxSpend).toBe(100000);
+  });
+});
+
+describe("re-exported types", () => {
+  it("AgentCredential is importable", () => {
+    const cred: AgentCredential = sampleCred;
+    expect(cred.schema).toBe("agent-identity-authority-v1");
+  });
+
+  it("CommitOutput is importable", () => {
+    const output: CommitOutput = mockCommitOutput;
+    expect(output.root).toBeTruthy();
+    expect(output.sectionHashes).toBeTruthy();
+    expect(output.salt).toBeTruthy();
   });
 });

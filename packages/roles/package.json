@@ -5,6 +5,9 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "trust402-agent": "dist/cli.js"
+  },
   "files": ["dist"],
   "exports": {
     ".": {
@@ -21,14 +24,17 @@
     "register": "tsx scripts/register-circuit.ts"
   },
   "dependencies": {
-    "@lemmaoracle/sdk": "^0.0.22",
+    "@lemmaoracle/agent": "^0.0.24-alpha.1",
+    "@lemmaoracle/sdk": "^0.0.23",
     "@lemmaoracle/spec": "^0.0.22",
+    "commander": "^13.0.0",
     "ramda": "^0.30.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/ramda": "^0.30.0",
     "dotenv": "^16.4.7",
+    "poseidon-lite": "0.3.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "vitest": "^3.0.0"

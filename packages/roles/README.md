@@ -4,84 +4,168 @@ ZK role-enforcement circuits for autonomous agent payments.
 
 Proves that an AI agent holds a required role **and** its spend limit falls within a payment gate ceiling — before the agent can settle an x402 payment.
 
-Built on [Lemma](https://github.com/lemmaoracle/lemma) — all cryptographic operations delegate to `@lemmaoracle/sdk`.
+Built on [Lemma](https://github.com/lemmaoracle/lemma) — all cryptographic operations delegate to `@lemmaoracle/sdk` and `@lemmaoracle/agent`.
 
-## Circuit: `role-spend-limit`
+## API Surface
 
-Combined proof of `hasRole AND spendLimitBelow`:
+### `commit(client, credential)` — Poseidon Commitment
 
-| | Signal | Description |
-|---|---|---|
-| Private | `credentialCommitment` | Poseidon hash of the agent's normalized credential |
-| Private | `roleHash` | Hash of the role the agent claims |
-| Private | `spendLimit` | Agent's spend limit (USD cents) |
-| Private | `salt` | Binding randomness |
-| Public | `requiredRoleHash` | Hash of the role required by the payment gate |
-| Public | `maxSpend` | Ceiling imposed by the gate |
-| Public | `nowSec` | Current unix timestamp |
-
-Constraints:
-1. `roleHash === requiredRoleHash` — role membership
-2. `spendLimit <= maxSpend` — spend ceiling (via `LessEqThan(128)`)
-3. `Poseidon4(commitment, roleHash, spendLimit, salt) === credentialCommitment` — binding
-
-## Usage
+Re-exported from `@lemmaoracle/agent`. Normalizes the credential via the SDK and computes a sectioned Poseidon6 commitment matching the `agent-identity-v1` circuit.
 
 ```typescript
-import { connect, witness, prove, submit } from "@trust402/roles";
-import type { AgentCredential, PaymentGate } from "@trust402/roles";
+import { commit } from "@trust402/roles";
 
-// Your agent credential (conforms to agent-identity-authority-v1)
-const credential: AgentCredential = { /* ... */ };
-
-// The payment gate requiring role "purchaser" with ceiling $1000
-const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-
-// Connect to Lemma
-const client = connect("https://workers.lemma.workers.dev")(apiKey);
-
-// Build witness
-const w = witness(credential, gate);
-
-// Generate ZK proof (delegates to @lemmaoracle/sdk prover)
-const proofResult = await prove(client, w);
-
-// Submit proof to Lemma oracle for on-chain recording
-await submit(client, docHash, proofResult);
+const commitOutput = await commit(client, credential);
+// commitOutput.root           — credentialCommitment
+// commitOutput.sectionHashes  — { identityHash, authorityHash, financialHash, lifecycleHash, provenanceHash }
+// commitOutput.salt           — binding salt
 ```
 
-### Attach to x402 Payment
+### `computeCredentialCommitment(normalized, salt?)` — Pure Commitment
+
+Re-exported from `@lemmaoracle/agent`. Computes the Poseidon commitment from an already-normalized credential without network access.
+
+### `prove(client, commitOutput)` — Generate Proof
+
+Generates a ZK proof against the `agent-identity-v1` circuit using the commitment output.
 
 ```typescript
-const headers = {
-  "X-Lemma-Proof": proofResult.proof,
-  "X-Lemma-Proof-Inputs": proofResult.inputs.join(","),
-  "X-Lemma-Circuit-Id": "role-spend-limit-v1",
-};
+import { prove } from "@trust402/roles";
+
+const proofResult = await prove(client, commitOutput);
 ```
 
-## Enforcement (SKILL.md)
+### `submit(client, docHash, proofResult)` — Submit Proof
 
-The package includes a `SKILL.md` that defines the proof-before-payment protocol for AI agents. When an agent follows this skill, it must generate a valid ZK proof before every x402 payment — no proof, no payment.
+Submits the proof to the Lemma oracle for on-chain recording.
 
-The protocol defines 5 mandatory steps:
-1. Load credential (halt if revoked or missing fields)
-2. Build witness
-3. Generate proof (halt if proof fails)
-4. Attach proof to x402 header
-5. Send payment
+```typescript
+import { submit } from "@trust402/roles";
+
+await submit(client, commitOutput.root, proofResult);
+```
+
+### `connect(apiBase)` — Client Factory
+
+Curried factory for creating a Lemma client.
+
+```typescript
+import { connect } from "@trust402/roles";
+
+const client = connect("https://workers.lemma.workers.dev")("your-api-key");
+```
+
+## Re-exported Types
+
+All credential types are re-exported from `@lemmaoracle/agent`:
+
+```typescript
+import type {
+  AgentCredential,
+  AgentCredentialInput,
+  NormalizedAgentCredential,
+  ValidationResult,
+  CommitOutput,
+  SectionedCommitResult,
+  ValidationError,
+  ValidationErrorKind,
+  CredentialOptions,
+  PaymentGate,
+} from "@trust402/roles";
+```
+
+## CLI: `trust402-agent`
+
+A command-line tool for creating, validating, and proving agent identity credentials.
+
+### `create` — Build a validated credential
+
+```bash
+# Minimal (required fields only)
+trust402-agent create \
+  --agent-id agent-1 \
+  --subject-id did:lemma:agent:1 \
+  --roles purchaser,viewer \
+  --issuer-id did:lemma:org:trust-anchor
+
+# With optional fields
+trust402-agent create \
+  --agent-id agent-1 \
+  --subject-id did:lemma:agent:1 \
+  --roles purchaser \
+  --issuer-id did:lemma:org:trust-anchor \
+  --org-id acme \
+  --controller-id did:lemma:org:acme \
+  --spend-limit 50000 \
+  --currency USD \
+  --scopes procurement,reporting \
+  --expires-at 1777436000 \
+  --source-system ldap \
+  --generator-id trust-anchor \
+  --chain-id 1 \
+  --network mainnet
+
+# Pipe to file
+trust402-agent create --agent-id agent-1 --subject-id subject-1 --roles admin --issuer-id issuer-1 > credential.json
+```
+
+### `validate` — Check a credential file
+
+```bash
+# Valid credential
+trust402-agent validate credential.json
+# Output: Valid
+
+# Invalid credential
+trust402-agent validate invalid.json
+# Output: errors to stderr, exit code 1
+```
+
+### `prove` — Commit, prove, and submit
+
+```bash
+# Full pipeline
+trust402-agent prove --credential credential.json --api-key $LEMMA_API_KEY
+
+# Dry-run (skip submission)
+trust402-agent prove --credential credential.json --api-key $LEMMA_API_KEY --dry-run
+```
+
+Output is structured JSON:
+
+```json
+{
+  "commit": { "root": "...", "sectionHashes": { ... }, "salt": "..." },
+  "proof": { "proof": "...", "inputs": ["..."] },
+  "submission": { "txHash": "...", "status": "submitted" }
+}
+```
+
+## Migration Note (v0.0.1 → v0.0.2)
+
+**Breaking change**: The SHA-256-based `witness()` function and `CircuitWitness` type have been replaced by a Poseidon-based `commit()` → `prove()` → `submit()` flow. The `CIRCUIT_ID` changed from `"role-spend-limit-v1"` to `"agent-identity-v1"`.
+
+| Before (v0.0.1) | After (v0.0.2) |
+|---|---|
+| `witness(cred, gate)` | `commit(client, cred)` |
+| `CircuitWitness` | `CommitOutput` |
+| `prove(client, witness)` | `prove(client, commitOutput)` |
+| `CIRCUIT_ID = "role-spend-limit-v1"` | `CIRCUIT_ID = "agent-identity-v1"` |
+| SHA-256 field hashes | Poseidon6 section hashes |
+
+The new flow uses sectioned Poseidon6 commitments from `@lemmaoracle/agent`, which are compatible with the `agent-identity-v1` circuit and `proofs.submit()` from `@lemmaoracle/sdk`.
 
 ## Build
 
 ```bash
-# Build the circuit artifacts (requires circom 2.1.x)
-cd packages/roles/circuits && bash scripts/build.sh
-
 # Build the TypeScript package
 cd packages/roles && pnpm build
 
 # Run tests
 pnpm test
+
+# Type-check
+pnpm type-check
 ```
 
 ## Registration
@@ -99,9 +183,9 @@ pnpm register
 
 ## Requirements
 
-- `circom` >= 2.1.x
 - Node.js >= 20
-- `@lemmaoracle/sdk` as a peer dependency
+- `@lemmaoracle/sdk` ^0.0.23
+- `@lemmaoracle/agent` ^0.0.23
 
 ## License
 
