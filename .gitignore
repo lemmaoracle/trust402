@@ -143,7 +143,7 @@ vite.config.ts.timestamp-*
 .vite/
 
 # Circom / snarkjs build artifacts
-circuits/build/
+**/circuits/build/
 *.r1cs
 *.sym
 *.wasm
