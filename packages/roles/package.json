@@ -14,6 +14,7 @@
   },
   "scripts": {
     "build": "tsc --build",
+    "build:circuit": "cd circuits && pnpm build",
     "dev": "tsc --watch",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
@@ -21,7 +22,7 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "register": "tsx scripts/register-circuit.ts",
-    "deploy-verifier": "cd circuits && forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast"
+    "deploy-verifier": "cd circuits && pnpm deploy-verifier"
   },
   "dependencies": {
     "@lemmaoracle/agent": "^0.0.24-alpha.1",

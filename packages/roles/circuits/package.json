@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "bash scripts/build.sh",
+    "deploy-verifier": "forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast"
   },
   "keywords": [],
   "author": "",

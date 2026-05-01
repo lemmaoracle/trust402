@@ -24,6 +24,7 @@ circom "$SRC_DIR/$CIRCUIT_NAME.circom" \
 mv "$BUILD_DIR/$CIRCUIT_NAME.r1cs" "$BUILD_DIR/${CIRCUIT_ID}.r1cs" 2>/dev/null || true
 mv "$BUILD_DIR/$CIRCUIT_NAME.sym" "$BUILD_DIR/${CIRCUIT_ID}.sym" 2>/dev/null || true
 if [ -d "$BUILD_DIR/${CIRCUIT_NAME}_js" ]; then
+  rm -rf "$BUILD_DIR/${CIRCUIT_ID}_js"
   mv "$BUILD_DIR/${CIRCUIT_NAME}_js" "$BUILD_DIR/${CIRCUIT_ID}_js"
   mv "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_NAME}.wasm" "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_ID}.wasm" 2>/dev/null || true
   mv "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_NAME}.wtns" "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_ID}.wtns" 2>/dev/null || true
