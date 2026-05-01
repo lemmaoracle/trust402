@@ -25,7 +25,7 @@ mv "$BUILD_DIR/$CIRCUIT_NAME.r1cs" "$BUILD_DIR/${CIRCUIT_ID}.r1cs" 2>/dev/null |
 mv "$BUILD_DIR/$CIRCUIT_NAME.sym" "$BUILD_DIR/${CIRCUIT_ID}.sym" 2>/dev/null || true
 if [ -d "$BUILD_DIR/${CIRCUIT_NAME}_js" ]; then
   mv "$BUILD_DIR/${CIRCUIT_NAME}_js" "$BUILD_DIR/${CIRCUIT_ID}_js"
-  mv "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_NAME}.wasm" "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_ID}.wasm"
+  mv "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_NAME}.wasm" "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_ID}.wasm" 2>/dev/null || true
   mv "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_NAME}.wtns" "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_ID}.wtns" 2>/dev/null || true
 fi
 
@@ -58,5 +58,13 @@ echo "→ exporting verification key"
 $SNARKJS zkey export verificationkey \
   "$BUILD_DIR/${CIRCUIT_ID}_final.zkey" \
   "$BUILD_DIR/${CIRCUIT_ID}_vkey.json"
+
+echo "→ exporting solidity verifier"
+$SNARKJS zkey export solidityverifier \
+  "$BUILD_DIR/${CIRCUIT_ID}_final.zkey" \
+  "$BUILD_DIR/RoleSpendLimitVerifier.sol"
+
+echo "→ compiling verifier with forge"
+forge build
 
 echo "✓ $CIRCUIT_ID built"

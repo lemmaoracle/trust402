@@ -15,7 +15,7 @@ const LEMMA_API_KEY = process.env.LEMMA_API_KEY;
 const PINATA_API_KEY = process.env.PINATA_API_KEY;
 const PINATA_SECRET_API_KEY = process.env.PINATA_SECRET_API_KEY;
 
-const VERIFIER_ADDRESS = process.env.VERIFIER_ADDRESS ?? "0x0000000000000000000000000000000000000000";
+const ROLES_VERIFIER_ADDRESS = process.env.ROLES_VERIFIER_ADDRESS ?? "0x0000000000000000000000000000000000000000";
 const CHAIN_ID = Number(process.env.CHAIN_ID ?? 84532);
 
 // ── Pinata ────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ const buildCircuitMeta = (wasmUrl: string, zkeyUrl: string): CircuitMeta => ({
   inputs: ["requiredRoleHash", "maxSpend", "nowSec", "roleGateCommitment", "credentialCommitmentPublic"],
   verifiers: [{
     type: "onchain",
-    address: VERIFIER_ADDRESS,
+    address: ROLES_VERIFIER_ADDRESS,
     chainId: CHAIN_ID,
     alg: "groth16-bn254-snarkjs",
   }],
