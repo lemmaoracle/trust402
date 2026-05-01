@@ -2,13 +2,14 @@
 /**
  * Register financial data documents with the Lemma oracle.
  *
- * Follows the pattern of example-x402/scripts/register-with-full-content.ts.
+ * Follows the pattern of example-mw/packages/server/src/report.ts.
  *
  * This script:
- * 1. Normalizes financial data using the demo normalizer
- * 2. Registers the document with the Lemma oracle
- * 3. Receives a docHash
- * 4. Writes the mapping to registered-docs.json
+ * 1. Defines the schema (downloads WASM normalizer)
+ * 2. Encrypts the payload to obtain docHash and CID
+ * 3. Normalizes and commits the data
+ * 4. Registers the document with the Lemma oracle
+ * 5. Writes the mapping to registered-docs.json
  *
  * Usage:
  *   tsx scripts/register-with-full-content.ts [reportId]
@@ -16,7 +17,7 @@
  *   tsx scripts/register-with-full-content.ts 2026q1   # register specific
  */
 
-import { create, schemas, prepare, documents, proofs } from "@lemmaoracle/sdk";
+import { create, define, schemas, prepare, encrypt, documents, proofs } from "@lemmaoracle/sdk";
 import type { LemmaClient } from "@lemmaoracle/spec";
 import * as R from "ramda";
 import * as dotenv from "dotenv";
@@ -30,6 +31,7 @@ const DEMO_ROOT = path.resolve(__dirname, "..");
 dotenv.config({ path: path.join(DEMO_ROOT, "..", "..", ".env") });
 
 const LEMMA_API_KEY = process.env.LEMMA_API_KEY;
+const HOLDER_PRIVATE_KEY = process.env.HOLDER_PRIVATE_KEY ?? "";
 
 // ── Hardcoded financial data ───────────────────────────────────────────
 
@@ -54,14 +56,18 @@ const REPORTS: ReadonlyArray<FinancialReport> = [
 // ── Validation ─────────────────────────────────────────────────────────
 
 const validateEnvironment = (): Promise<void> =>
-  R.isNil(LEMMA_API_KEY)
-    ? Promise.reject(new Error("LEMMA_API_KEY environment variable is required"))
+  R.any(R.isNil, [LEMMA_API_KEY, HOLDER_PRIVATE_KEY])
+    ? Promise.reject(new Error("LEMMA_API_KEY and HOLDER_PRIVATE_KEY environment variables are required"))
     : Promise.resolve();
 
 // ── Client factory ─────────────────────────────────────────────────────
 
 const createLemmaClient = (): LemmaClient =>
   create({ apiKey: LEMMA_API_KEY! });
+
+// ── Holder public key derivation ───────────────────────────────────────
+
+const { derivePublicKey } = await import("@lemmaoracle/sdk");
 
 // ── Registration ───────────────────────────────────────────────────────
 
@@ -79,28 +85,30 @@ const registerReport = (
     profit: String(report.profit),
   };
 
+  const holderPublicKey = derivePublicKey(HOLDER_PRIVATE_KEY);
+
   return schemas
     .getById(client, "financial-data-v1")
-    .then((schemaMeta) =>
-      prepare(client, {
-        schema: schemaMeta.id,
-        payload,
-      }),
+    .then((schemaMeta) => define(schemaMeta))
+    .then((schemaDef) =>
+      Promise.all([
+        encrypt(client, { payload, holderKey: holderPublicKey }),
+        prepare(client, { schema: schemaDef.id, payload }),
+      ]),
     )
-    .then((prep) => {
+    .then(([enc, prep]) => {
       const normalized = prep.normalized as Record<string, unknown>;
-      const docHash = `0x${normalized.integrity as string}`;
 
       return documents
         .register(client, {
           schema: "financial-data-v1",
-          docHash,
-          cid: `cid://${docHash.slice(2)}`,
+          docHash: enc.docHash,
+          cid: enc.cid,
           issuerId: "did:example:trust402-demo",
           subjectId: "did:example:trust402-demo",
           attributes: normalized,
           commitments: {
-            scheme: "poseidon",
+            scheme: prep.commitments.scheme,
             root: prep.commitments.root,
             leaves: prep.commitments.leaves,
             randomness: prep.commitments.randomness,
@@ -112,15 +120,16 @@ const registerReport = (
         })
         .then(() =>
           proofs.submit(client, {
-            docHash,
+            docHash: enc.docHash,
             circuitId: "financial-data-v1",
             proof: "",
             inputs: [prep.commitments.root],
           }),
         )
         .then(() => {
-          console.log(`  docHash: ${docHash}`);
-          return { reportId: report.reportId, docHash };
+          console.log(`  docHash: ${enc.docHash}`);
+          console.log(`  cid:     ${enc.cid}`);
+          return { reportId: report.reportId, docHash: enc.docHash };
         });
     });
 };
