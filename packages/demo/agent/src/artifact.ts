@@ -9,14 +9,10 @@ import type { IdentityArtifact, CommitOutput, ProveOutput } from "@trust402/prot
 import type { AgentCredential } from "@trust402/identity";
 import type { EnvConfig } from "./env.js";
 
-const readArtifactFile = (filePath: string): IdentityArtifact | null => {
-  const exists = fs.existsSync(filePath);
-  const raw = exists ? fs.readFileSync(filePath, "utf8") : null;
+const SCHEMA_ID = "agent-identity-authority-v1";
 
-  return R.isNil(raw)
-    ? null
-    : parseArtifact(raw);
-};
+const isNormalizedError = (normalized: unknown): normalized is { error: string } =>
+  typeof normalized === "object" && normalized !== null && "error" in normalized;
 
 const parseArtifact = (raw: string): IdentityArtifact => {
   const parsed = JSON.parse(raw) as Record<string, unknown>;
@@ -26,6 +22,22 @@ const parseArtifact = (raw: string): IdentityArtifact => {
     docHash: parsed.docHash as string,
     credential: parsed.credential as AgentCredential,
   };
+};
+
+const readArtifactFile = (filePath: string): IdentityArtifact | null => {
+  const exists = fs.existsSync(filePath);
+  const raw = exists ? fs.readFileSync(filePath, "utf8") : null;
+
+  if (R.isNil(raw)) return null;
+
+  const artifact = parseArtifact(raw);
+  if (isNormalizedError(artifact.commitOutput.normalized)) {
+    console.log(chalk.yellow(`⚠️  Artifact at ${filePath} has a failed normalization — removing and regenerating.`));
+    fs.unlinkSync(filePath);
+    return null;
+  }
+
+  return artifact;
 };
 
 const promptUser = (question: string): Promise<string> =>
@@ -94,8 +106,6 @@ const saveArtifact = (filePath: string, artifact: IdentityArtifact): void => {
   fs.writeFileSync(filePath, json + "\n", "utf8");
 };
 
-const SCHEMA_ID = "agent-identity-authority-v1";
-
 const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
   const cred = createTestCredential(env);
   const client = create({ apiKey: env.lemmaApiKey });
@@ -109,6 +119,13 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
     credential: cred,
     holderKey: env.holderPublicKey,
   });
+
+  if (isNormalizedError(registerResult.commitOutput.normalized)) {
+    return Promise.reject(new Error(
+      `Credential normalization failed: ${registerResult.commitOutput.normalized.error}. ` +
+      "The credential may have missing or invalid fields.",
+    ));
+  }
 
   let proofResult: ProveOutput;
   try {
