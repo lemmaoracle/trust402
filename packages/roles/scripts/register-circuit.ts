@@ -45,7 +45,7 @@ const uploadToPinata = (filePath: string, fileName: string): Promise<string> => 
 
 const buildCircuitMeta = (wasmUrl: string, zkeyUrl: string): CircuitMeta => ({
   circuitId: "role-spend-limit-v1",
-  schema: "role-spend-limit-v1",
+  schema: "passthrough-v1",
   description: "Combined hasRole + spendLimitBelow predicate with cross-proof correlation via credentialCommitment",
   inputs: ["requiredRoleHash", "maxSpend", "nowSec", "roleGateCommitment", "credentialCommitmentPublic"],
   verifiers: [{
