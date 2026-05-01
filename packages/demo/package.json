@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "build": "./scripts/build.sh",
-    "deploy-verifier": "cd circuit && forge script script/Deploy.s.sol --rpc-url base-sepolia --broadcast",
+    "deploy-verifier": "cd circuit && forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast",
     "register": "tsx scripts/register.ts"
   },
   "devDependencies": {
