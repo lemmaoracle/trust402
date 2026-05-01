@@ -1,22 +1,17 @@
-## ADDED Requirements
+## Requirements
 
 ### Requirement: wrapFetchWithProof function
 
-The system SHALL provide a `wrapFetchWithProof` function that accepts a base `fetch`, an `AgentCredential`, a `PaymentGate`, and a `LemmaClient`, and returns a new `fetch`-compatible function that enforces the proof-before-payment protocol by generating identity and role proofs before each request.
+The system SHALL provide a `wrapFetchWithProof` function that accepts a base `fetch`, an `IdentityArtifact`, a `PaymentGate`, and a `LemmaClient`, and returns a new `fetch`-compatible function that enforces the proof-before-payment protocol by generating a role proof (using the artifact's cached identity proof) before each request.
 
-#### Scenario: Successful proof-then-fetch
+#### Scenario: Successful proof-then-fetch with artifact
 
-- **WHEN** `wrapFetchWithProof(fetch, credential, gate, lemmaClient)` is called and the returned fetch is invoked with a URL
-- **THEN** the function generates an identity proof (π₁) via `commit → prove(agent-identity-v1)`, builds a role witness via `witness(credential, gate, commitOutput)`, generates a role proof (π₂) via `prove(role-spend-limit-v2)`, submits both proofs to the oracle, and calls the base fetch only after all steps succeed
-
-#### Scenario: Identity proof generation failure blocks fetch
-
-- **WHEN** the identity proof generation fails during `wrapFetchWithProof`
-- **THEN** the function SHALL return `Promise.reject(new Error(...))` and no HTTP request SHALL be sent
+- **WHEN** `wrapFetchWithProof(fetch, artifact, gate, lemmaClient)` is called and the returned fetch is invoked with a URL
+- **THEN** the function generates a role proof (π₂) via `witness(gate, artifact.commitOutput) → prove(role-spend-limit-v1)`, submits both proofs to the oracle, and calls the base fetch only after all steps succeed; no identity proof generation occurs; `spendLimit` is sourced from `artifact.commitOutput.normalized.financial.spendLimit`
 
 #### Scenario: Role proof generation failure blocks fetch
 
-- **WHEN** the role witness or proof generation fails during `wrapFetchWithProof`
+- **WHEN** the role proof generation fails during `wrapFetchWithProof`
 - **THEN** the function SHALL return `Promise.reject(new Error(...))` and no HTTP request SHALL be sent
 
 #### Scenario: Oracle submission failure does not block fetch
@@ -32,35 +27,41 @@ The system SHALL provide a `wrapFetchWithProof` function that accepts a base `fe
 #### Scenario: Composable with wrapFetchWithPayment
 
 - **WHEN** `wrapFetchWithProof` wraps a fetch that has already been wrapped by `wrapFetchWithPayment` from `@x402/fetch`
-- **THEN** the combined fetch SHALL first enforce proof generation (via `wrapFetchWithProof`) and then handle x402 payment (via `wrapFetchWithPayment`), blocking unauthorized payments at the proof step
+- **THEN** the combined fetch SHALL first enforce role proof generation (via `wrapFetchWithProof`) and then handle x402 payment (via `wrapFetchWithPayment`), blocking unauthorized payments at the proof step
 
-### Requirement: proveAndSubmit function
+### Requirement: Witness builder for role-spend-limit-v1
 
-The system SHALL provide a `proveAndSubmit` function that accepts a `LemmaClient`, an `AgentCredential`, and a `PaymentGate`, and returns a `Promise<ProveAndSubmitResult>` containing both proof results and submission results, without making any HTTP fetch request.
+The system SHALL provide a `witness(gate, commitOutput)` function that maps a `PaymentGate` and a `CommitOutput` into `CircuitWitness` field elements for the role-spend-limit circuit, computing `roleGateCommitment` via `poseidon-lite` Poseidon4. The `spendLimit` field SHALL be sourced from `commitOutput.normalized.financial.spendLimit` (type `string`), not from a separate `AgentCredential` parameter.
 
-#### Scenario: Successful prove and submit
+#### Scenario: Deterministic witness generation
 
-- **WHEN** `proveAndSubmit(client, credential, gate)` is called with a valid credential and matching gate
-- **THEN** the function generates an identity proof via `commit → prove(agent-identity-v1)`, builds a role witness via `witness(credential, gate, commitOutput)`, generates a role proof via `prove(role-spend-limit-v2)`, submits both proofs to the oracle, and returns `{ commitOutput, identityProof, roleProof, identitySubmission, roleSubmission }`
+- **WHEN** the same gate and commit output are provided with the same timestamp
+- **THEN** the witness builder produces identical output
 
-#### Scenario: Identity proof failure
+#### Scenario: Identical roleHash for same role name
 
-- **WHEN** the identity proof generation fails during `proveAndSubmit`
-- **THEN** the function SHALL return `Promise.reject(new Error(...))`
+- **WHEN** the witness builder derives `roleHash` and `requiredRoleHash` for the same role name
+- **THEN** both values are identical (SHA-256 with top-nibble masking)
 
-#### Scenario: Role proof failure
+#### Scenario: roleGateCommitment matches circuit Poseidon4
 
-- **WHEN** the role witness or proof generation fails during `proveAndSubmit`
-- **THEN** the function SHALL return `Promise.reject(new Error(...))`
+- **WHEN** the witness builder computes `roleGateCommitment`
+- **THEN** `roleGateCommitment = Poseidon4(credentialCommitment, roleHash, spendLimit, saltScalar)` using `poseidon-lite`, matching the circuit constraint
 
-### Requirement: ProveAndSubmitResult type
+#### Scenario: Spend limit sourced from commitOutput
 
-The system SHALL define a `ProveAndSubmitResult` type containing `commitOutput` (CommitOutput), `identityProof` (ProveOutput), `roleProof` (ProveOutput), `identitySubmission` (unknown, oracle response), and `roleSubmission` (unknown, oracle response).
+- **WHEN** the witness builder receives a `CommitOutput` containing `normalized.financial.spendLimit`
+- **THEN** `spendLimit` is set to `commitOutput.normalized.financial.spendLimit` (already a `string`)
 
-#### Scenario: Type contains all proof and submission data
+#### Scenario: credentialCommitment sourced from commitOutput
 
-- **WHEN** a `ProveAndSubmitResult` is returned from `proveAndSubmit`
-- **THEN** all five fields are present and correctly typed
+- **WHEN** the witness builder receives a `CommitOutput` from the agent-identity commit step
+- **THEN** `credentialCommitment` is set to `commitOutput.root` and `credentialCommitmentPublic` is set to the same value
+
+#### Scenario: Salt sourced from commitOutput
+
+- **WHEN** the witness builder receives a `CommitOutput`
+- **THEN** `salt` is derived from `commitOutput.salt` as a BN254 field element scalar
 
 ### Requirement: PaymentGate re-export
 
