@@ -1,0 +1,37 @@
+{
+  "name": "@trust402/demo-agent",
+  "version": "0.0.1",
+  "description": "Demo CLI that simulates an AI agent using Trust402 ZK proofs to pay for a verified data API",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "demo-agent": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "tsx src/cli.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@trust402/protocol": "workspace:*",
+    "@trust402/identity": "workspace:*",
+    "@trust402/roles": "workspace:*",
+    "@lemmaoracle/sdk": "^0.0.23",
+    "@coinbase/x402": "^2.1.0",
+    "@x402/fetch": "^2.11.0",
+    "viem": "^2.0.0",
+    "snarkjs": "^0.7.6",
+    "chalk": "^5.0.0",
+    "ora": "^8.0.0",
+    "commander": "^13.0.0",
+    "dotenv": "^16.4.7",
+    "ramda": "^0.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ramda": "^0.30.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}
