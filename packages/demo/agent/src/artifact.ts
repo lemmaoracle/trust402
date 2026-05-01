@@ -1,15 +1,10 @@
-/**
- * IdentityArtifact detection and generation dialog.
- *
- * Task 7.1: Detect artifact file existence.
- * Task 7.2: Interactive generation dialog when absent.
- * Task 7.3: Parse artifact.json mapping commit → commitOutput, proof → identityProof.
- */
-
 import * as R from "ramda";
 import chalk from "chalk";
 import * as fs from "node:fs";
 import * as readline from "node:readline";
+import { credential } from "@lemmaoracle/agent";
+import { create, schemas, define } from "@lemmaoracle/sdk";
+import { register as registerIdentity, prove as proveIdentity } from "@trust402/identity";
 import type { IdentityArtifact, CommitOutput, ProveOutput } from "@trust402/protocol";
 import type { AgentCredential } from "@trust402/identity";
 import type { EnvConfig } from "./env.js";
@@ -59,13 +54,83 @@ const displayArtifactExplanation = (): void => {
 };
 
 const offerAutoGenerate = async (env: EnvConfig): Promise<boolean> => {
-  const hasRequiredEnv = R.isNotEmpty(env.lemmaApiKey) && R.isNotEmpty(env.agentPrivateKey);
+  const hasRequiredEnv = R.isNotEmpty(env.lemmaApiKey) && R.isNotEmpty(env.holderPublicKey);
   const prompt = hasRequiredEnv
     ? "Would you like to auto-generate an artifact? (y/n): "
     : "Generate manually and re-run. Press 'q' to quit: ";
 
   const answer = await promptUser(prompt);
   return answer === "y" || answer === "yes";
+};
+
+const createTestCredential = (env: EnvConfig): AgentCredential => {
+  const result = credential({
+    agentId: env.agentId,
+    subjectId: env.agentId,
+    roles: ["purchaser"],
+    issuerId: env.issuerId,
+    spendLimit: env.maxSpend,
+  });
+
+  return result.valid
+    ? result.credential
+    : (() => {
+        R.forEach(
+          (e: { kind: string; message: string }) => process.stderr.write(`${e.kind}: ${e.message}\n`),
+          result.errors,
+        );
+        process.exit(1);
+        return undefined as never;
+      })();
+};
+
+const saveArtifact = (filePath: string, artifact: IdentityArtifact): void => {
+  const json = JSON.stringify({
+    commit: artifact.commitOutput,
+    proof: artifact.identityProof,
+    docHash: artifact.docHash,
+    credential: artifact.credential,
+  }, null, 2);
+  fs.writeFileSync(filePath, json + "\n", "utf8");
+};
+
+const SCHEMA_ID = "agent-identity-authority-v1";
+
+const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
+  const cred = createTestCredential(env);
+  const client = create({ apiKey: env.lemmaApiKey });
+
+  console.log(chalk.cyan("  Loading schema..."));
+  const schemaMeta = await schemas.getById(client, SCHEMA_ID);
+  await define(schemaMeta);
+
+  console.log(chalk.cyan("  Registering document..."));
+  const registerResult = await registerIdentity(client, {
+    credential: cred,
+    holderKey: env.holderPublicKey,
+  });
+
+  let proofResult: ProveOutput;
+  try {
+    console.log(chalk.cyan("  Generating identity proof..."));
+    proofResult = await proveIdentity(client, registerResult.commitOutput);
+  } catch (err) {
+    console.log(chalk.yellow("  ⚠ Identity proof generation failed, saving partial artifact."));
+    console.log(chalk.yellow(`    Error: ${err instanceof Error ? err.message : String(err)}`));
+    proofResult = { proof: "", inputs: [] };
+  }
+
+  const artifact: IdentityArtifact = {
+    commitOutput: registerResult.commitOutput,
+    identityProof: proofResult,
+    docHash: registerResult.docHash,
+    credential: cred,
+  };
+
+  saveArtifact(env.artifactPath, artifact);
+  console.log(chalk.green(`  ✓ Artifact saved to ${env.artifactPath}`));
+
+  return artifact;
 };
 
 export const loadOrPromptArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
@@ -81,7 +146,7 @@ export const loadOrPromptArtifact = async (env: EnvConfig): Promise<IdentityArti
     const shouldGenerate = await offerAutoGenerate(env);
 
     return shouldGenerate
-      ? Promise.reject(new Error("Auto-generation not yet implemented. Please run trust402 create + trust402 prove manually."))
+      ? generateArtifact(env)
       : Promise.reject(new Error("IdentityArtifact is required. Exiting."));
   };
 

@@ -35,6 +35,9 @@ importers:
       '@lemmaoracle/spec':
         specifier: ^0.0.22
         version: 0.0.22
+      '@trust402/identity':
+        specifier: workspace:*
+        version: link:../identity
       commander:
         specifier: ^13.0.0
         version: 13.1.0
@@ -102,6 +105,9 @@ importers:
       '@coinbase/x402':
         specifier: ^2.1.0
         version: 2.1.0(typescript@5.9.3)
+      '@lemmaoracle/agent':
+        specifier: ^0.0.24-alpha.1
+        version: 0.0.24-alpha.1
       '@lemmaoracle/sdk':
         specifier: ^0.0.23
         version: 0.0.23

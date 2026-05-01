@@ -63,9 +63,24 @@ const mockRoleProof: ProveOutput = {
 const mockSubmission = { txHash: "0xabc123def456", status: "submitted" };
 const mockClient = { apiKey: "test" } as unknown as LemmaClient;
 const sampleGate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
+const mockCredential = {
+  schema: "agent-identity-authority-v1",
+  identity: { agentId: "agent-0xabc123", subjectId: "did:lemma:agent:0xabc123", controllerId: "did:lemma:org:acme", orgId: "acme" },
+  authority: {
+    roles: [{ name: "purchaser" }, { name: "viewer" }],
+    scopes: [{ name: "procurement" }, { name: "reporting" }],
+    permissions: [{ resource: "payments", action: "create" }, { resource: "reports", action: "read" }],
+  },
+  financial: { spendLimit: 50000, currency: "USD", paymentPolicy: "auto-approve-below-limit" },
+  lifecycle: { issuedAt: 1745900000, expiresAt: 1777436000, revoked: false, revocationRef: "" },
+  provenance: { issuerId: "did:lemma:org:trust-anchor", sourceSystem: "", generatorId: "", chainContext: { chainId: 1, network: "mainnet" } },
+} as const;
+
 const sampleArtifact: IdentityArtifact = {
   commitOutput: mockCommitOutput,
   identityProof: mockIdentityProof,
+  docHash: "0xdeadbeefdocHash",
+  credential: mockCredential,
 };
 
 // ── Mocks ─────────────────────────────────────────────────────────────
@@ -86,7 +101,7 @@ const mockRoleSubmit = vi.fn().mockResolvedValue(mockSubmission);
 const mockIdentitySubmit = vi.fn().mockResolvedValue(mockSubmission);
 
 vi.mock("@trust402/identity", () => ({
-  commit: vi.fn(),
+  register: vi.fn(),
   prove: vi.fn(),
   submit: mockIdentitySubmit,
 }));

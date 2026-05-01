@@ -63,9 +63,24 @@ const mockRoleProof: ProveOutput = {
 const mockSubmission = { txHash: "0xabc123def456", status: "submitted" };
 const mockClient = { apiKey: "test" } as unknown as LemmaClient;
 const sampleGate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
+const mockCredential = {
+  schema: "agent-identity-authority-v1",
+  identity: { agentId: "agent-0xabc123", subjectId: "did:lemma:agent:0xabc123", controllerId: "did:lemma:org:acme", orgId: "acme" },
+  authority: {
+    roles: [{ name: "purchaser" }, { name: "viewer" }],
+    scopes: [{ name: "procurement" }, { name: "reporting" }],
+    permissions: [{ resource: "payments", action: "create" }, { resource: "reports", action: "read" }],
+  },
+  financial: { spendLimit: 50000, currency: "USD", paymentPolicy: "auto-approve-below-limit" },
+  lifecycle: { issuedAt: 1745900000, expiresAt: 1777436000, revoked: false, revocationRef: "" },
+  provenance: { issuerId: "did:lemma:org:trust-anchor", sourceSystem: "", generatorId: "", chainContext: { chainId: 1, network: "mainnet" } },
+} as const;
+
 const sampleArtifact: IdentityArtifact = {
   commitOutput: mockCommitOutput,
   identityProof: mockIdentityProof,
+  docHash: "0xdeadbeefdocHash",
+  credential: mockCredential,
 };
 
 // ── Mocks ─────────────────────────────────────────────────────────────
@@ -86,7 +101,7 @@ const mockRoleSubmit = vi.fn().mockResolvedValue(mockSubmission);
 const mockIdentitySubmit = vi.fn().mockResolvedValue(mockSubmission);
 
 vi.mock("@trust402/identity", () => ({
-  commit: vi.fn(),
+  register: vi.fn(),
   prove: vi.fn(),
   submit: mockIdentitySubmit,
 }));
@@ -140,8 +155,8 @@ describe("proveRoleFromArtifact", () => {
 
     expect(mockRoleWitness).toHaveBeenCalledWith(sampleGate, mockCommitOutput);
     expect(mockRoleProve).toHaveBeenCalled();
-    expect(mockIdentitySubmit).toHaveBeenCalledWith(mockClient, mockCommitOutput.root, mockIdentityProof);
-    expect(mockRoleSubmit).toHaveBeenCalledWith(mockClient, mockCommitOutput.root, mockRoleProof);
+    expect(mockIdentitySubmit).toHaveBeenCalledWith(mockClient, sampleArtifact.docHash, mockIdentityProof);
+    expect(mockRoleSubmit).toHaveBeenCalledWith(mockClient, sampleArtifact.docHash, mockRoleProof);
 
     expect(result.identityProof).toEqual(mockIdentityProof);
     expect(result.roleProof).toEqual(mockRoleProof);
@@ -149,13 +164,13 @@ describe("proveRoleFromArtifact", () => {
     expect(result.roleSubmission).toEqual(mockSubmission);
   });
 
-  it("does not call identity commit or prove (uses artifact directly)", async () => {
+  it("does not call identity register or prove (uses artifact directly)", async () => {
     const { proveRoleFromArtifact } = await import("./prove-role-from-artifact.js");
-    const { commit: identityCommit, prove: identityProve } = await import("@trust402/identity");
+    const { register: identityRegister, prove: identityProve } = await import("@trust402/identity");
 
     await proveRoleFromArtifact(mockClient, sampleArtifact, sampleGate);
 
-    expect(identityCommit).not.toHaveBeenCalled();
+    expect(identityRegister).not.toHaveBeenCalled();
     expect(identityProve).not.toHaveBeenCalled();
   });
 
@@ -164,7 +179,7 @@ describe("proveRoleFromArtifact", () => {
 
     await proveRoleFromArtifact(mockClient, sampleArtifact, sampleGate);
 
-    expect(mockIdentitySubmit).toHaveBeenCalledWith(mockClient, mockCommitOutput.root, mockIdentityProof);
+    expect(mockIdentitySubmit).toHaveBeenCalledWith(mockClient, sampleArtifact.docHash, mockIdentityProof);
   });
 
   it("rejects with error when role proof generation fails", async () => {

@@ -1,26 +1,30 @@
 /**
  * Environment variable validation for the demo agent.
  *
- * Task 6.1: Validates required environment variables with clear error messages.
+ * Validates required environment variables with clear error messages.
  */
 
 import * as R from "ramda";
 
 type RequiredVar = Readonly<{ name: string; key: string }>;
 
-type EnvConfig = Readonly<{
+export type EnvConfig = Readonly<{
   resourceUrl: string;
   lemmaApiKey: string;
   agentPrivateKey: string;
   artifactPath: string;
   maxSpend: number;
   lemmaApiBase: string;
+  agentId: string;
+  issuerId: string;
+  holderPublicKey: string;
 }>;
 
 const REQUIRED_VARS: ReadonlyArray<RequiredVar> = [
   { name: "Demo resource server URL", key: "RESOURCE_URL" },
   { name: "Lemma API key", key: "LEMMA_API_KEY" },
   { name: "Agent wallet private key", key: "AGENT_PRIVATE_KEY" },
+  { name: "Holder public key (secp256k1)", key: "HOLDER_PUBLIC_KEY" },
 ];
 
 const isVarMissing = (v: RequiredVar): boolean =>
@@ -49,7 +53,8 @@ export const validateEnv = (): EnvConfig => {
     artifactPath: process.env.ARTIFACT_PATH ?? "./artifact.json",
     maxSpend: Number(process.env.MAX_SPEND ?? 1000),
     lemmaApiBase: process.env.LEMMA_API_BASE ?? "https://workers.lemma.workers.dev",
+    agentId: process.env.AGENT_ID ?? "did:trust402:demo-agent",
+    issuerId: process.env.ISSUER_ID ?? "did:trust402:demo-issuer",
+    holderPublicKey: process.env.HOLDER_PUBLIC_KEY!,
   };
 };
-
-export type { EnvConfig };
