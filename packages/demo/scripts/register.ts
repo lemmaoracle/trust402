@@ -31,8 +31,8 @@ dotenv.config({ path: path.join(DEMO_ROOT, "..", "..", ".env") });
 const LEMMA_API_KEY = process.env.LEMMA_API_KEY;
 const PINATA_API_KEY = process.env.PINATA_API_KEY;
 const PINATA_SECRET_API_KEY = process.env.PINATA_SECRET_API_KEY;
-const VERIFIER_ADDRESS =
-  process.env.VERIFIER_ADDRESS ?? "0x0000000000000000000000000000000000000000";
+const DEMO_VERIFIER_ADDRESS =
+  process.env.DEMO_VERIFIER_ADDRESS ?? "0x0000000000000000000000000000000000000000";
 const CHAIN_ID = Number(process.env.CHAIN_ID ?? 84532);
 
 // ── Constants ──────────────────────────────────────────────────────────
@@ -235,7 +235,7 @@ const circuitZkeyPath = path.join(circuitBuildDir, `${CIRCUIT_ID}_final.zkey`);
 
 const main = async (): Promise<void> => {
   await validateEnvironment();
-  const networks = [{ chainId: CHAIN_ID, address: VERIFIER_ADDRESS }];
+  const networks = [{ chainId: CHAIN_ID, address: DEMO_VERIFIER_ADDRESS }];
   const client = createLemmaClient();
 
   console.log("Starting financial-data registration with Lemma oracle...\n");
@@ -282,7 +282,7 @@ const main = async (): Promise<void> => {
   const registeredCircuit = await registerCircuit(client, circuitMeta);
   console.log(`Circuit registered: ${registeredCircuit.circuitId}`);
   console.log(`  Schema: ${registeredCircuit.schema}`);
-  console.log(`  Verifier: ${VERIFIER_ADDRESS} (Chain: ${CHAIN_ID})`);
+  console.log(`  Verifier: ${DEMO_VERIFIER_ADDRESS} (Chain: ${CHAIN_ID})`);
   console.log(`  WASM IPFS: ${circuitWasmIpfsUrl}`);
   console.log(`  zKey IPFS: ${circuitZkeyIpfsUrl}`);
 
