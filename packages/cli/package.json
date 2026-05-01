@@ -28,6 +28,7 @@
     "@lemmaoracle/agent": "^0.0.24-alpha.1",
     "@lemmaoracle/sdk": "^0.0.23",
     "@lemmaoracle/spec": "^0.0.22",
+    "@trust402/identity": "workspace:*",
     "commander": "^13.0.0",
     "ramda": "^0.30.0"
   },

@@ -13,3 +13,8 @@ The system SHALL provide an updated registration script that uploads circuit art
 
 - **WHEN** a document is registered and a proof is generated
 - **THEN** `proofs.submit()` SHALL receive the `docHash` from the `encrypt()` output, not from `commitOutput.root`
+
+#### Scenario: Commitment data uses section hashes from commitOutput
+
+- **WHEN** `proveRoleFromArtifact()` registers a document
+- **THEN** the `commitments` field SHALL be populated from `commitOutput` with section hashes as leaves, root from `commitOutput.root`, and randomness from `commitOutput.salt`

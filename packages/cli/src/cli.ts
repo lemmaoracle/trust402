@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import * as R from "ramda";
-import { credential, validate, commit as agentCommit } from "@lemmaoracle/agent";
-import { create, prover, proofs } from "@lemmaoracle/sdk";
+import { credential, validate } from "@lemmaoracle/agent";
+import { create } from "@lemmaoracle/sdk";
+import { register as registerIdentity, prove as proveIdentity, submit as submitIdentity } from "@trust402/identity";
 import type { AgentCredentialInput } from "@lemmaoracle/agent";
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -92,9 +93,10 @@ const validateCommand = new Command("validate")
 // ── Prove command (agent-identity-v1) ─────────────────────────────────
 
 const proveCommand = new Command("prove")
-  .description("Execute commit → prove → submit pipeline for agent-identity-v1")
+  .description("Execute register → prove → submit pipeline for agent-identity-v1")
   .requiredOption("--credential <path>", "Path to credential JSON file")
   .requiredOption("--api-key <key>", "Lemma API key")
+  .requiredOption("--holder-key <hex>", "Holder public key (secp256k1 compressed hex) for document encryption")
   .option("--dry-run", "Skip the submit step")
   .action(async (opts) => {
     const cred = await readJsonFile(opts.credential);
@@ -112,24 +114,21 @@ const proveCommand = new Command("prove")
         })();
 
     const client = create({ apiKey: opts.apiKey });
-    const commitResult = await agentCommit(client, credObj);
-    const proofResult = await prover.prove(client, {
-      circuitId: "agent-identity-v1",
-      witness: commitResult,
+
+    const registerResult = await registerIdentity(client, {
+      credential: credObj,
+      holderKey: opts.holderKey,
     });
+
+    const proofResult = await proveIdentity(client, registerResult.commitOutput);
 
     const submission = opts.dryRun
       ? undefined
-      : await proofs.submit(client, {
-          docHash: commitResult.root,
-          circuitId: "agent-identity-v1",
-          proof: proofResult.proof,
-          inputs: proofResult.inputs,
-        });
+      : await submitIdentity(client, registerResult.docHash, proofResult);
 
     const output = opts.dryRun
-      ? { commit: commitResult, proof: proofResult }
-      : { commit: commitResult, proof: proofResult, submission };
+      ? { docHash: registerResult.docHash, cid: registerResult.cid, commit: registerResult.commitOutput, proof: proofResult, credential: credObj }
+      : { docHash: registerResult.docHash, cid: registerResult.cid, commit: registerResult.commitOutput, proof: proofResult, submission, credential: credObj };
 
     process.stdout.write(JSON.stringify(output, null, 2) + "\n");
   });

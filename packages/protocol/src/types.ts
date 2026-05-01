@@ -1,4 +1,5 @@
 import type { CommitOutput } from "@trust402/identity";
+import type { AgentCredential } from "@lemmaoracle/agent";
 import type { ProveOutput } from "@lemmaoracle/sdk";
 
 // ── Re-exports for artifact construction ──────────────────────────────
@@ -10,12 +11,14 @@ export type { ProveOutput } from "@lemmaoracle/sdk";
 
 /**
  * Pre-generated identity proof artifact, produced by `trust402 prove`.
- * Caches the commit output and identity proof so they don't need
- * to be regenerated on every fetch call.
+ * Caches the commit output, identity proof, docHash, and credential
+ * so they don't need to be regenerated on every fetch call.
  */
 export type IdentityArtifact = Readonly<{
   commitOutput: CommitOutput;
   identityProof: ProveOutput;
+  docHash: string;
+  credential: AgentCredential;
 }>;
 
 // ── ProveRoleResult ───────────────────────────────────────────────────

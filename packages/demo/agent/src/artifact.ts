@@ -11,6 +11,7 @@ import chalk from "chalk";
 import * as fs from "node:fs";
 import * as readline from "node:readline";
 import type { IdentityArtifact, CommitOutput, ProveOutput } from "@trust402/protocol";
+import type { AgentCredential } from "@trust402/identity";
 import type { EnvConfig } from "./env.js";
 
 const readArtifactFile = (filePath: string): IdentityArtifact | null => {
@@ -27,6 +28,8 @@ const parseArtifact = (raw: string): IdentityArtifact => {
   return {
     commitOutput: parsed.commit as CommitOutput,
     identityProof: parsed.proof as ProveOutput,
+    docHash: parsed.docHash as string,
+    credential: parsed.credential as AgentCredential,
   };
 };
 
@@ -46,11 +49,13 @@ const displayArtifactExplanation = (): void => {
   console.log(chalk.yellow("\n⚠️  No IdentityArtifact found."));
   console.log("An IdentityArtifact is required to generate ZK proofs for payment.");
   console.log("It contains:");
-  console.log("  - commit: The credential commitment output (agent-identity-v1)");
-  console.log("  - proof:  The identity proof from the Lemma oracle\n");
+  console.log("  - commit:   The credential commitment output (agent-identity-v1)");
+  console.log("  - proof:    The identity proof from the Lemma oracle");
+  console.log("  - docHash:  The document hash from encrypt + register");
+  console.log("  - credential: The original agent credential\n");
   console.log("To generate one, run:");
   console.log(chalk.cyan("  trust402 create --agent-id <id> --subject-id <id> --roles <roles> --issuer-id <id> > credential.json"));
-  console.log(chalk.cyan("  trust402 prove --credential credential.json --api-key <key> > artifact.json\n"));
+  console.log(chalk.cyan("  trust402 prove --credential credential.json --api-key <key> --holder-key <hex> > artifact.json\n"));
 };
 
 const offerAutoGenerate = async (env: EnvConfig): Promise<boolean> => {

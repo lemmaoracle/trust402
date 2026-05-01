@@ -28,12 +28,12 @@ export const proveRoleFromArtifact = (
   gate: PaymentGate,
 ): Promise<ProveRoleResult> => {
   const commitOutput: CommitOutput = artifact.commitOutput;
+  const docHash: string = artifact.docHash;
   const circuitWitness = witness(gate, commitOutput);
 
   return proveRole(client, circuitWitness)
     .catch(rejectRoleFailure)
     .then((roleProof: ProveOutput) => {
-      const docHash = commitOutput.root;
       const identitySubmissionP = safeSubmit(submitIdentity, client, docHash, artifact.identityProof);
       const roleSubmissionP = safeSubmit(submitRole, client, docHash, roleProof);
 

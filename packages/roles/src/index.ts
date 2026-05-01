@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { create, prover, proofs } from "@lemmaoracle/sdk";
-import type { LemmaClient, ProveOutput } from "@lemmaoracle/sdk";
+import { create, prover, proofs, encrypt, documents } from "@lemmaoracle/sdk";
+import type { LemmaClient, ProveOutput, DocumentCommitments } from "@lemmaoracle/sdk";
 import { poseidon4 } from "poseidon-lite";
 import type {
   CommitOutput,
@@ -89,6 +89,48 @@ export const witness = (
     roleGateCommitment,
     credentialCommitmentPublic: commitOutput.root,
   };
+};
+
+// ── Register ──────────────────────────────────────────────────────────
+
+export type RegisterInput = Readonly<{
+  payload: unknown;
+  holderKey: string;
+  schema?: string;
+}>;
+
+export type RegisterOutput = Readonly<{
+  docHash: string;
+  cid: string;
+}>;
+
+const DEFAULT_SCHEMA = "passthrough-v1";
+
+const EMPTY_COMMITMENTS: DocumentCommitments = {
+  scheme: "poseidon" as const,
+  root: "",
+  leaves: [],
+  randomness: "",
+};
+
+export const register = (
+  client: LemmaClient,
+  input: RegisterInput,
+): Promise<RegisterOutput> => {
+  const schema = input.schema ?? DEFAULT_SCHEMA;
+
+  return encrypt(client, { payload: input.payload, holderKey: input.holderKey })
+    .then((enc) =>
+      documents.register(client, {
+        schema,
+        docHash: enc.docHash,
+        cid: enc.cid,
+        issuerId: "trust402-roles",
+        subjectId: "agent",
+        commitments: EMPTY_COMMITMENTS,
+        revocation: { root: "" },
+      }).then(() => ({ docHash: enc.docHash, cid: enc.cid })),
+    );
 };
 
 // ── Prove ──────────────────────────────────────────────────────────────
