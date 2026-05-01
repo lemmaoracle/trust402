@@ -1,0 +1,44 @@
+{
+  "name": "@trust402/protocol",
+  "version": "0.0.1",
+  "description": "Buyer-side enforcement of the proof-before-payment protocol for Trust402",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
+  },
+  "dependencies": {
+    "@lemmaoracle/agent": "^0.0.24-alpha.1",
+    "@lemmaoracle/sdk": "^0.0.23",
+    "@lemmaoracle/spec": "^0.0.22",
+    "@trust402/identity": "workspace:*",
+    "@trust402/roles": "workspace:*",
+    "ramda": "^0.30.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "@types/ramda": "^0.30.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "eslint-plugin-functional": "^7.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}
