@@ -124,11 +124,33 @@ describe("prove", () => {
   it("delegates to prover.prove with agent-identity-v1 circuit and commitOutput as witness", async () => {
     const { prove } = await import("./index.js");
 
-    const result = await prove(mockClient, mockCommitOutput);
+    const result =     const mockProveInput = {
+      commitOutput: mockCommitOutput,
+      issuerSecretKey: "0x1",
+      mac: "0x2",
+      issuerPublicKey: "0x3",
+    };
+
+    await prove(mockClient, mockProveInput);
 
     expect(mockProve).toHaveBeenCalledWith(mockClient, {
       circuitId: "agent-identity-v1",
-      witness: mockCommitOutput,
+      witness: {
+        identityHash: mockCommitOutput.sectionHashes.identityHash,
+        authorityHash: mockCommitOutput.sectionHashes.authorityHash,
+        financialHash: mockCommitOutput.sectionHashes.financialHash,
+        lifecycleHash: mockCommitOutput.sectionHashes.lifecycleHash,
+        provenanceHash: mockCommitOutput.sectionHashes.provenanceHash,
+        salt: mockCommitOutput.salt,
+        issuerSecretKey: "0x1",
+        mac: "0x2",
+        issuedAt: mockCommitOutput.normalized.lifecycle.issuedAt,
+        expiresAt: mockCommitOutput.normalized.lifecycle.expiresAt,
+        revoked: "0",
+        credentialCommitment: mockCommitOutput.root,
+        issuerPublicKey: "0x3",
+        nowSec: expect.any(String),
+      },
     });
     expect(result).toEqual(mockProveOutput);
   });

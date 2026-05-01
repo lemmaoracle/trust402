@@ -5,6 +5,7 @@ import * as readline from "node:readline";
 import { credential } from "@lemmaoracle/agent";
 import { create, schemas, define } from "@lemmaoracle/sdk";
 import { register as registerIdentity, prove as proveIdentity } from "@trust402/identity";
+import type { ProveInput } from "@trust402/identity";
 import type { IdentityArtifact, CommitOutput, ProveOutput } from "@trust402/protocol";
 import type { AgentCredential } from "@trust402/identity";
 import type { EnvConfig } from "./env.js";
@@ -130,7 +131,12 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
   let proofResult: ProveOutput;
   try {
     console.log(chalk.cyan("  Generating identity proof..."));
-    proofResult = await proveIdentity(client, registerResult.commitOutput);
+    proofResult = await proveIdentity(client, {
+      commitOutput: registerResult.commitOutput,
+      issuerSecretKey: "0",
+      mac: "0",
+      issuerPublicKey: "0",
+    });
   } catch (err) {
     console.log(chalk.yellow("  ⚠ Identity proof generation failed, saving partial artifact."));
     console.log(chalk.yellow(`    Error: ${err instanceof Error ? err.message : String(err)}`));

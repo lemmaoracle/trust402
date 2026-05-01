@@ -113,17 +113,24 @@ app.use("*", async (c, next) => {
     ? (console.warn("PAY_TO_ADDRESS not set, skipping x402 middleware"), await next())
     : undefined;
 
-  const facilitatorConfig = {
-    url: c.env.FACILITATOR_URL.replace(/\/$/, ""),
-    ...createFacilitatorConfig(c.env.CDP_API_KEY_ID, c.env.CDP_API_KEY_SECRET),
-  };
+  // Use OpenX402 (no auth required) unless CDP keys are provided
+  const hasCdpKeys = R.isNotEmpty(c.env.CDP_API_KEY_ID ?? "") && R.isNotEmpty(c.env.CDP_API_KEY_SECRET ?? "");
+
+  const facilitatorConfig = hasCdpKeys
+    ? {
+        url: (c.env.FACILITATOR_URL ?? "https://api.cdp.coinbase.com/platform/v2/x402").replace(/\/$/, ""),
+        ...createFacilitatorConfig(c.env.CDP_API_KEY_ID, c.env.CDP_API_KEY_SECRET),
+      }
+    : {
+        url: (c.env.FACILITATOR_URL ?? "https://facilitator.openx402.ai").replace(/\/$/, ""),
+      };
 
   const facilitatorClient = new HTTPFacilitatorClient(facilitatorConfig);
 
   const lemmaConfig = {
     apiBase: c.env.LEMMA_API_BASE ?? "",
     apiKey: c.env.LEMMA_API_KEY,
-    relayUrl: c.env.LEMMA_RELAY_URL,
+    relayUrl: c.env.LEMMA_RELAY_URL ?? "https://p01--lemma-relay-api--svxwx5rc5jzx.code.run/",
     circuitId: "x402-payment-v1",
   };
 

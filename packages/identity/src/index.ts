@@ -25,6 +25,7 @@ export type {
   ValidationError,
   ValidationErrorKind,
   CredentialOptions,
+  ProveInput,
 };
 
 // ── Constants ──────────────────────────────────────────────────────────
@@ -87,11 +88,43 @@ export const register = (
 
 // ── Prove ──────────────────────────────────────────────────────────────
 
+export type ProveInput = Readonly<{
+  commitOutput: CommitOutput;
+  issuerSecretKey: string;
+  mac: string;
+  issuerPublicKey: string;
+  nowSec?: string;
+}>;
+
+const commitOutputToWitness = (input: ProveInput): Readonly<Record<string, unknown>> => {
+  const co = input.commitOutput;
+  const n = co.normalized;
+  return {
+    identityHash: co.sectionHashes.identityHash,
+    authorityHash: co.sectionHashes.authorityHash,
+    financialHash: co.sectionHashes.financialHash,
+    lifecycleHash: co.sectionHashes.lifecycleHash,
+    provenanceHash: co.sectionHashes.provenanceHash,
+    salt: co.salt,
+    issuerSecretKey: input.issuerSecretKey,
+    mac: input.mac,
+    issuedAt: n.lifecycle.issuedAt,
+    expiresAt: n.lifecycle.expiresAt,
+    revoked: n.lifecycle.revoked === "true" ? "1" : "0",
+    credentialCommitment: co.root,
+    issuerPublicKey: input.issuerPublicKey,
+    nowSec: input.nowSec ?? Math.floor(Date.now() / 1000).toString(),
+  };
+};
+
 export const prove = (
   client: LemmaClient,
-  commitOutput: CommitOutput,
+  input: ProveInput,
 ): Promise<ProveOutput> =>
-  prover.prove(client, { circuitId: CIRCUIT_ID, witness: commitOutput });
+  prover.prove(client, {
+    circuitId: CIRCUIT_ID,
+    witness: commitOutputToWitness(input),
+  });
 
 // ── Submit ─────────────────────────────────────────────────────────────
 

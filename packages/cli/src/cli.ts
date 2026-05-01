@@ -97,6 +97,10 @@ const proveCommand = new Command("prove")
   .requiredOption("--credential <path>", "Path to credential JSON file")
   .requiredOption("--api-key <key>", "Lemma API key")
   .requiredOption("--holder-key <hex>", "Holder public key (secp256k1 compressed hex) for document encryption")
+  .requiredOption("--issuer-secret-key <hex>", "Issuer secret key (field element hex) for MAC verification")
+  .requiredOption("--mac <hex>", "Issuer MAC (field element hex) over the credential commitment")
+  .requiredOption("--issuer-public-key <hex>", "Issuer public key (field element hex)")
+  .option("--now-sec <timestamp>", "Current unix timestamp (defaults to now)")
   .option("--dry-run", "Skip the submit step")
   .action(async (opts) => {
     const cred = await readJsonFile(opts.credential);
@@ -120,7 +124,13 @@ const proveCommand = new Command("prove")
       holderKey: opts.holderKey,
     });
 
-    const proofResult = await proveIdentity(client, registerResult.commitOutput);
+    const proofResult = await proveIdentity(client, {
+      commitOutput: registerResult.commitOutput,
+      issuerSecretKey: opts.issuerSecretKey,
+      mac: opts.mac,
+      issuerPublicKey: opts.issuerPublicKey,
+      nowSec: opts.nowSec,
+    });
 
     const submission = opts.dryRun
       ? undefined
