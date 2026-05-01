@@ -1,47 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { AgentCredential, CommitOutput } from "@trust402/identity";
+import type { CommitOutput } from "@trust402/identity";
 import type { ProveOutput, LemmaClient } from "@lemmaoracle/sdk";
 import type { PaymentGate } from "@trust402/roles";
+import type { IdentityArtifact } from "./types.js";
 
 // ── Fixtures ──────────────────────────────────────────────────────────
-
-const sampleCred: AgentCredential = {
-  schema: "agent-identity-authority-v1",
-  identity: {
-    agentId: "agent-0xabc123",
-    subjectId: "did:lemma:agent:0xabc123",
-    controllerId: "did:lemma:org:acme",
-    orgId: "acme",
-  },
-  authority: {
-    roles: [{ name: "purchaser" }, { name: "viewer" }],
-    scopes: [{ name: "procurement" }, { name: "reporting" }],
-    permissions: [
-      { resource: "payments", action: "create" },
-      { resource: "reports", action: "read" },
-    ],
-  },
-  financial: {
-    spendLimit: 50000,
-    currency: "USD",
-    paymentPolicy: "auto-approve-below-limit",
-  },
-  lifecycle: {
-    issuedAt: 1745900000,
-    expiresAt: 1777436000,
-    revoked: false,
-    revocationRef: "",
-  },
-  provenance: {
-    issuerId: "did:lemma:org:trust-anchor",
-    sourceSystem: "",
-    generatorId: "",
-    chainContext: {
-      chainId: 1,
-      network: "mainnet",
-    },
-  },
-};
 
 const mockCommitOutput: CommitOutput = {
   normalized: {
@@ -100,12 +63,13 @@ const mockRoleProof: ProveOutput = {
 const mockSubmission = { txHash: "0xabc123def456", status: "submitted" };
 const mockClient = { apiKey: "test" } as unknown as LemmaClient;
 const sampleGate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
+const sampleArtifact: IdentityArtifact = {
+  commitOutput: mockCommitOutput,
+  identityProof: mockIdentityProof,
+};
 
 // ── Mocks ─────────────────────────────────────────────────────────────
 
-const mockIdentityCommit = vi.fn().mockResolvedValue(mockCommitOutput);
-const mockIdentityProve = vi.fn().mockResolvedValue(mockIdentityProof);
-const mockIdentitySubmit = vi.fn().mockResolvedValue(mockSubmission);
 const mockRoleWitness = vi.fn().mockReturnValue({
   credentialCommitment: mockCommitOutput.root,
   roleHash: "12345",
@@ -119,10 +83,11 @@ const mockRoleWitness = vi.fn().mockReturnValue({
 });
 const mockRoleProve = vi.fn().mockResolvedValue(mockRoleProof);
 const mockRoleSubmit = vi.fn().mockResolvedValue(mockSubmission);
+const mockIdentitySubmit = vi.fn().mockResolvedValue(mockSubmission);
 
 vi.mock("@trust402/identity", () => ({
-  commit: mockIdentityCommit,
-  prove: mockIdentityProve,
+  commit: vi.fn(),
+  prove: vi.fn(),
   submit: mockIdentitySubmit,
 }));
 
@@ -149,50 +114,45 @@ describe("wrapFetchWithProof", () => {
   let mockBaseFetch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    mockIdentityCommit.mockClear();
-    mockIdentityProve.mockClear();
-    mockIdentitySubmit.mockClear();
     mockRoleWitness.mockClear();
     mockRoleProve.mockClear();
     mockRoleSubmit.mockClear();
+    mockIdentitySubmit.mockClear();
 
-    mockIdentityCommit.mockResolvedValue(mockCommitOutput);
-    mockIdentityProve.mockResolvedValue(mockIdentityProof);
-    mockIdentitySubmit.mockResolvedValue(mockSubmission);
+    mockRoleWitness.mockReturnValue({
+      credentialCommitment: mockCommitOutput.root,
+      roleHash: "12345",
+      spendLimit: "50000",
+      salt: "99999",
+      requiredRoleHash: "12345",
+      maxSpend: "100000",
+      nowSec: "1700000000",
+      roleGateCommitment: "roleGateCommitmentValue",
+      credentialCommitmentPublic: mockCommitOutput.root,
+    });
     mockRoleProve.mockResolvedValue(mockRoleProof);
     mockRoleSubmit.mockResolvedValue(mockSubmission);
+    mockIdentitySubmit.mockResolvedValue(mockSubmission);
 
     mockBaseFetch = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
   });
 
-  it("calls base fetch after successful proofs", async () => {
+  it("calls base fetch after successful role proof from artifact", async () => {
     const { wrapFetchWithProof } = await import("./wrap-fetch-with-proof.js");
-    const wrappedFetch = wrapFetchWithProof(mockBaseFetch, sampleCred, sampleGate, mockClient);
+    const wrappedFetch = wrapFetchWithProof(mockBaseFetch, sampleArtifact, sampleGate, mockClient);
 
     const response = await wrappedFetch("https://example.com/api");
 
-    expect(mockIdentityCommit).toHaveBeenCalledWith(mockClient, sampleCred);
+    expect(mockRoleWitness).toHaveBeenCalledWith(sampleGate, mockCommitOutput);
     expect(mockBaseFetch).toHaveBeenCalledWith("https://example.com/api", undefined);
     expect(response.status).toBe(200);
-  });
-
-  it("does NOT call base fetch when identity proof fails", async () => {
-    mockIdentityProve.mockRejectedValue(new Error("SDK error"));
-
-    const { wrapFetchWithProof } = await import("./wrap-fetch-with-proof.js");
-    const wrappedFetch = wrapFetchWithProof(mockBaseFetch, sampleCred, sampleGate, mockClient);
-
-    await expect(wrappedFetch("https://example.com/api")).rejects.toThrow(
-      "Identity proof generation failed",
-    );
-    expect(mockBaseFetch).not.toHaveBeenCalled();
   });
 
   it("does NOT call base fetch when role proof fails", async () => {
     mockRoleProve.mockRejectedValue(new Error("Circuit error"));
 
     const { wrapFetchWithProof } = await import("./wrap-fetch-with-proof.js");
-    const wrappedFetch = wrapFetchWithProof(mockBaseFetch, sampleCred, sampleGate, mockClient);
+    const wrappedFetch = wrapFetchWithProof(mockBaseFetch, sampleArtifact, sampleGate, mockClient);
 
     await expect(wrappedFetch("https://example.com/api")).rejects.toThrow(
       "Role proof generation failed",
@@ -206,7 +166,7 @@ describe("wrapFetchWithProof", () => {
     mockRoleSubmit.mockRejectedValue(new Error("Network error"));
 
     const { wrapFetchWithProof } = await import("./wrap-fetch-with-proof.js");
-    const wrappedFetch = wrapFetchWithProof(mockBaseFetch, sampleCred, sampleGate, mockClient);
+    const wrappedFetch = wrapFetchWithProof(mockBaseFetch, sampleArtifact, sampleGate, mockClient);
 
     const response = await wrappedFetch("https://example.com/api");
 
@@ -218,7 +178,7 @@ describe("wrapFetchWithProof", () => {
 
   it("preserves RequestInit when calling base fetch", async () => {
     const { wrapFetchWithProof } = await import("./wrap-fetch-with-proof.js");
-    const wrappedFetch = wrapFetchWithProof(mockBaseFetch, sampleCred, sampleGate, mockClient);
+    const wrappedFetch = wrapFetchWithProof(mockBaseFetch, sampleArtifact, sampleGate, mockClient);
 
     const init: RequestInit = {
       method: "POST",
@@ -240,7 +200,7 @@ describe("wrapFetchWithProof", () => {
     const { wrapFetchWithProof } = await import("./wrap-fetch-with-proof.js");
 
     const paymentFetch = mockWrapFetchWithPayment(mockBaseFetch);
-    const proofThenPaymentFetch = wrapFetchWithProof(paymentFetch, sampleCred, sampleGate, mockClient);
+    const proofThenPaymentFetch = wrapFetchWithProof(paymentFetch, sampleArtifact, sampleGate, mockClient);
 
     const response = await proofThenPaymentFetch("https://example.com/api");
 

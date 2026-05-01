@@ -1,22 +1,21 @@
-import type { AgentCredential } from "@trust402/identity";
 import type { LemmaClient } from "@lemmaoracle/sdk";
 import type { PaymentGate } from "@trust402/roles";
-import type { ProveAndSubmitResult } from "./types.js";
-import { proveAndSubmit } from "./prove-and-submit.js";
+import type { IdentityArtifact, ProveRoleResult } from "./types.js";
+import { proveRoleFromArtifact } from "./prove-role-from-artifact.js";
 
 const proceedToFetch = (
   baseFetch: typeof fetch,
   input: RequestInfo | URL,
   init: RequestInit | undefined,
-  _result: ProveAndSubmitResult,
+  _result: ProveRoleResult,
 ): Promise<Response> => baseFetch(input, init);
 
 export const wrapFetchWithProof = (
   baseFetch: typeof fetch,
-  credential: AgentCredential,
+  artifact: IdentityArtifact,
   gate: PaymentGate,
   lemmaClient: LemmaClient,
 ): typeof fetch =>
   (input: RequestInfo | URL, init?: RequestInit) =>
-    proveAndSubmit(lemmaClient, credential, gate)
+    proveRoleFromArtifact(lemmaClient, artifact, gate)
       .then((result) => proceedToFetch(baseFetch, input, init, result));

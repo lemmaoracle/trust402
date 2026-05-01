@@ -3,14 +3,12 @@ import { create, prover, proofs } from "@lemmaoracle/sdk";
 import type { LemmaClient, ProveOutput } from "@lemmaoracle/sdk";
 import { poseidon4 } from "poseidon-lite";
 import type {
-  AgentCredential,
   CommitOutput,
 } from "@lemmaoracle/agent";
 
 // ── Re-exported types from @lemmaoracle/agent ──────────────────────────
 
 export type {
-  AgentCredential,
   CommitOutput,
 } from "@lemmaoracle/agent";
 
@@ -61,16 +59,15 @@ export const fieldHash = (name: string): string => {
 
 /**
  * Build a CircuitWitness for the role-spend-limit-v1 circuit.
- * Maps AgentCredential + PaymentGate + CommitOutput into field elements.
+ * Maps PaymentGate + CommitOutput into field elements.
+ * Spend limit is sourced from commitOutput.normalized.financial.spendLimit.
  */
 export const witness = (
-  credential: AgentCredential,
   gate: PaymentGate,
   commitOutput: CommitOutput,
 ): CircuitWitness => {
   const roleHash = fieldHash(gate.role);
-  const rawSpendLimit = credential.financial?.spendLimit ?? 0;
-  const spendLimit = String(rawSpendLimit);
+  const spendLimit = commitOutput.normalized.financial.spendLimit;
   const saltScalar = BigInt(commitOutput.salt).toString();
   const nowSec = Math.floor(Date.now() / 1000).toString();
 

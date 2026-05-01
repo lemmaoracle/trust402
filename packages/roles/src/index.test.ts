@@ -1,47 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { AgentCredential, CommitOutput, PaymentGate, CircuitWitness } from "./index.js";
+import type { CommitOutput, PaymentGate, CircuitWitness } from "./index.js";
 import type { ProveOutput, LemmaClient } from "@lemmaoracle/sdk";
 import { poseidon4 } from "poseidon-lite";
 
 // ── Fixtures ──────────────────────────────────────────────────────────
-
-const sampleCred: AgentCredential = {
-  schema: "agent-identity-authority-v1",
-  identity: {
-    agentId: "agent-0xabc123",
-    subjectId: "did:lemma:agent:0xabc123",
-    controllerId: "did:lemma:org:acme",
-    orgId: "acme",
-  },
-  authority: {
-    roles: [{ name: "purchaser" }, { name: "viewer" }],
-    scopes: [{ name: "procurement" }, { name: "reporting" }],
-    permissions: [
-      { resource: "payments", action: "create" },
-      { resource: "reports", action: "read" },
-    ],
-  },
-  financial: {
-    spendLimit: 50000,
-    currency: "USD",
-    paymentPolicy: "auto-approve-below-limit",
-  },
-  lifecycle: {
-    issuedAt: 1745900000,
-    expiresAt: 1777436000,
-    revoked: false,
-    revocationRef: "",
-  },
-  provenance: {
-    issuerId: "did:lemma:org:trust-anchor",
-    sourceSystem: "",
-    generatorId: "",
-    chainContext: {
-      chainId: 1,
-      network: "mainnet",
-    },
-  },
-};
 
 const mockCommitOutput: CommitOutput = {
   normalized: {
@@ -137,32 +99,21 @@ describe("witness", () => {
   it("roleHash equals requiredRoleHash for same gate role", async () => {
     const { witness } = await import("./index.js");
     const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(sampleCred, gate, mockCommitOutput);
+    const w = witness(gate, mockCommitOutput);
     expect(w.roleHash).toBe(w.requiredRoleHash);
   });
 
-  it("spendLimit defaults to '0' when absent from credential", async () => {
-    const { witness } = await import("./index.js");
-    const credNoSpend: AgentCredential = {
-      ...sampleCred,
-      financial: { currency: "USD", paymentPolicy: "auto-approve" },
-    };
-    const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(credNoSpend, gate, mockCommitOutput);
-    expect(w.spendLimit).toBe("0");
-  });
-
-  it("spendLimit from credential financial section", async () => {
+  it("spendLimit is sourced from commitOutput.normalized.financial.spendLimit", async () => {
     const { witness } = await import("./index.js");
     const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(sampleCred, gate, mockCommitOutput);
+    const w = witness(gate, mockCommitOutput);
     expect(w.spendLimit).toBe("50000");
   });
 
   it("credentialCommitment equals credentialCommitmentPublic", async () => {
     const { witness } = await import("./index.js");
     const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(sampleCred, gate, mockCommitOutput);
+    const w = witness(gate, mockCommitOutput);
     expect(w.credentialCommitment).toBe(w.credentialCommitmentPublic);
     expect(w.credentialCommitment).toBe(mockCommitOutput.root);
   });
@@ -170,7 +121,7 @@ describe("witness", () => {
   it("roleGateCommitment matches poseidon4 computation", async () => {
     const { witness, fieldHash } = await import("./index.js");
     const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(sampleCred, gate, mockCommitOutput);
+    const w = witness(gate, mockCommitOutput);
 
     const expected = poseidon4([
       BigInt(mockCommitOutput.root),
@@ -185,8 +136,8 @@ describe("witness", () => {
   it("produces deterministic output for same inputs (ignoring nowSec)", async () => {
     const { witness } = await import("./index.js");
     const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w1 = witness(sampleCred, gate, mockCommitOutput);
-    const w2 = witness(sampleCred, gate, mockCommitOutput);
+    const w1 = witness(gate, mockCommitOutput);
+    const w2 = witness(gate, mockCommitOutput);
     expect(w1.roleHash).toBe(w2.roleHash);
     expect(w1.spendLimit).toBe(w2.spendLimit);
     expect(w1.roleGateCommitment).toBe(w2.roleGateCommitment);
@@ -201,7 +152,7 @@ describe("prove", () => {
   it("delegates to prover.prove with role-spend-limit-v1 circuit", async () => {
     const { prove, witness } = await import("./index.js");
     const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w = witness(sampleCred, gate, mockCommitOutput);
+    const w = witness(gate, mockCommitOutput);
 
     const result = await prove(mockClient, w);
 
@@ -255,7 +206,7 @@ describe("CircuitWitness type", () => {
   it("accepts a valid CircuitWitness", async () => {
     const { witness } = await import("./index.js");
     const gate: PaymentGate = { role: "purchaser", maxSpend: 100000 };
-    const w: CircuitWitness = witness(sampleCred, gate, mockCommitOutput);
+    const w: CircuitWitness = witness(gate, mockCommitOutput);
     expect(w.credentialCommitment).toBeTruthy();
     expect(w.roleHash).toBeTruthy();
     expect(w.roleGateCommitment).toBeTruthy();

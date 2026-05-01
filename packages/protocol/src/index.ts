@@ -1,4 +1,4 @@
 export { wrapFetchWithProof } from "./wrap-fetch-with-proof.js";
-export { proveAndSubmit } from "./prove-and-submit.js";
-export type { ProveAndSubmitResult } from "./types.js";
+export { proveRoleFromArtifact } from "./prove-role-from-artifact.js";
+export type { IdentityArtifact, ProveRoleResult, CommitOutput, ProveOutput } from "./types.js";
 export type { PaymentGate } from "@trust402/roles";
