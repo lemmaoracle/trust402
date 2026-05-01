@@ -19,8 +19,8 @@
 import { create, schemas, prepare, documents, proofs } from "@lemmaoracle/sdk";
 import type { LemmaClient } from "@lemmaoracle/spec";
 import * as R from "ramda";
-import dotenv from "dotenv";
-import fs from "node:fs";
+import * as dotenv from "dotenv";
+import * as fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 

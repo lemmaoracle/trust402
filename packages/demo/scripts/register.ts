@@ -13,11 +13,10 @@
  */
 
 import { create, schemas, circuits } from "@lemmaoracle/sdk";
-import type { LemmaClient, SchemaMeta, CircuitMeta } from "@lemmaoracle/spec";
+import type { LemmaClient, SchemaMeta, CircuitMeta, CircuitVerifier } from "@lemmaoracle/spec";
 import * as R from "ramda";
-import dotenv from "dotenv";
-import fs from "node:fs";
-import path from "node:path";
+import * as dotenv from "dotenv";
+import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -55,7 +54,7 @@ const buildSchemaMeta = (): SchemaMeta => ({
     "Corporate IR financial data — quarterly report with revenue, profit, and attestation docHash",
   normalize: {
     artifact: {
-      type: "wasm",
+      type: "ipfs" as const,
       wasm: "",
       js: "",
     },
@@ -94,24 +93,23 @@ const registerSchema = (client: LemmaClient): Promise<SchemaMeta> => {
 
 // ── Circuit registration ───────────────────────────────────────────────
 
+const buildVerifier = (entry: Readonly<{ chainId: number; address: string }>): CircuitVerifier => ({
+  type: "onchain" as const,
+  address: entry.address,
+  chainId: entry.chainId,
+  alg: "groth16-bn254-snarkjs" as const,
+});
+
 const buildCircuitMeta = (networks: ReadonlyArray<Readonly<{ chainId: number; address: string }>>): CircuitMeta => ({
   circuitId: CIRCUIT_ID,
   schema: SCHEMA_ID,
   description:
     "Financial data attestation circuit — proves hash(fields) == claimedDocHash using Poseidon",
   inputs: ["reportId", "company", "period", "revenue", "profit", "claimedDocHash"],
-  verifiers: R.map(
-    (entry: Readonly<{ chainId: number; address: string }>) => ({
-      type: "onchain",
-      address: entry.address,
-      chainId: entry.chainId,
-      alg: "groth16-bn254-snarkjs",
-    }),
-    networks,
-  ),
+  verifiers: R.map(buildVerifier, networks),
   artifact: {
     location: {
-      type: "local",
+      type: "ipfs" as const,
       wasm: "",
       zkey: "",
     },

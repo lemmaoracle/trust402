@@ -7,11 +7,13 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "outDir": "dist",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "exclude": ["node_modules", "dist", "circuit"]
+  "include": ["scripts"],
+  "exclude": ["node_modules", "dist", "circuit", "agent", "resource", "normalize"]
 }
