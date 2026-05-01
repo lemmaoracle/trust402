@@ -26,7 +26,7 @@ import { executeProofGatedPayment } from "./payment.js";
 import { verifyAttestation } from "./attestation.js";
 import { displaySummary } from "./summary.js";
 
-config({ path: path.resolve(import.meta.dirname, "..", "..", "..", ".env") });
+config({ path: path.resolve(import.meta.dirname, "..", "..", "..", "..", ".env") });
 
 const main = async (): Promise<void> => {
   console.log(chalk.bold.blue("\n🤖 Trust402 Demo Agent\n"));
