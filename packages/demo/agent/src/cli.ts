@@ -16,6 +16,7 @@
  */
 
 import { config } from "dotenv";
+import * as path from "node:path";
 import chalk from "chalk";
 import { validateEnv } from "./env.js";
 import { displaySkillSummary } from "./skill-loader.js";
@@ -25,7 +26,7 @@ import { executeProofGatedPayment } from "./payment.js";
 import { verifyAttestation } from "./attestation.js";
 import { displaySummary } from "./summary.js";
 
-config();
+config({ path: path.resolve(import.meta.dirname, "..", "..", "..", ".env") });
 
 const main = async (): Promise<void> => {
   console.log(chalk.bold.blue("\n🤖 Trust402 Demo Agent\n"));
