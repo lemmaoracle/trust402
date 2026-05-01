@@ -5,14 +5,14 @@ The demo agent requires an `IdentityArtifact` to generate ZK proofs for payment,
 ## What Changes
 
 - Implement auto-generation of `IdentityArtifact` in the demo agent when no artifact file exists and the user opts in
-- The auto-generation flow: create a default `AgentCredential` → commit → prove → submit → save artifact to disk
-- Add `AGENT_ID` and `ISSUER_ID` environment variables for customizing the generated credential identity
+- The auto-generation flow: create a default `AgentCredential` → `register()` (commit + encrypt + documents.register) → `prove()` → `submit()` → save artifact to disk
+- Add `AGENT_ID`, `ISSUER_ID`, and `HOLDER_PUBLIC_KEY` environment variables for customizing the generated credential
 - Fix the `.env` path resolution in `cli.ts` (currently points to `packages/demo/.env` instead of monorepo root `trust402/.env`)
 
 ## Capabilities
 
 ### New Capabilities
-- `artifact-auto-gen`: Automatic IdentityArtifact generation within the demo agent, covering credential creation, commit, prove, submit, and persistence
+- `artifact-auto-gen`: Automatic IdentityArtifact generation within the demo agent, covering credential creation, register, prove, submit, and persistence
 
 ### Modified Capabilities
 
@@ -21,8 +21,8 @@ The demo agent requires an `IdentityArtifact` to generate ZK proofs for payment,
 ## Impact
 
 - **Code**: `packages/demo/agent/src/artifact.ts` (implement auto-gen), `packages/demo/agent/src/env.ts` (add new env vars), `packages/demo/agent/src/cli.ts` (fix .env path)
-- **Dependencies**: `@trust402/identity` (commit, prove, submit), `@lemmaoracle/agent` (credential)
-- **Configuration**: New `AGENT_ID` and `ISSUER_ID` env vars in `.env.example`
+- **Dependencies**: `@trust402/identity` (register, prove), `@lemmaoracle/agent` (credential)
+- **Configuration**: New `AGENT_ID`, `ISSUER_ID`, and `HOLDER_PUBLIC_KEY` env vars in `.env.example`
 
 ## Non-goals
 

@@ -2,12 +2,12 @@
 
 ### Requirement: Auto-generation of IdentityArtifact
 
-The demo agent SHALL provide an auto-generation function that creates an `IdentityArtifact` when the artifact file is missing and the user confirms generation. The function SHALL execute the full pipeline: credential creation → commit → prove → submit → save to disk.
+The demo agent SHALL provide an auto-generation function that creates an `IdentityArtifact` when the artifact file is missing and the user confirms generation. The function SHALL execute the full pipeline: credential creation → register → prove → submit → save to disk.
 
 #### Scenario: User confirms auto-generation
 
 - **WHEN** no artifact file exists at `ARTIFACT_PATH` and the user answers "y" to the auto-generate prompt
-- **THEN** the agent SHALL create a default `AgentCredential`, commit it via `@trust402/identity`, prove it via `@trust402/identity`, submit the proof, and save the resulting artifact to `ARTIFACT_PATH`
+- **THEN** the agent SHALL create a default `AgentCredential`, register it via `@trust402/identity.register()` (which performs commit + encrypt + documents.register), prove it via `@trust402/identity.prove()`, submit the proof, and save the resulting artifact to `ARTIFACT_PATH`
 
 #### Scenario: User declines auto-generation
 
@@ -17,7 +17,7 @@ The demo agent SHALL provide an auto-generation function that creates an `Identi
 #### Scenario: Auto-generation persists artifact for reuse
 
 - **WHEN** auto-generation completes successfully
-- **THEN** the artifact JSON SHALL be written to `ARTIFACT_PATH` so subsequent runs can load it without regeneration
+- **THEN** the artifact JSON SHALL be written to `ARTIFACT_PATH` including `commitOutput`, `identityProof`, `docHash`, and `credential` so subsequent runs can load it without regeneration
 
 ### Requirement: Default credential values for auto-generation
 
@@ -37,6 +37,20 @@ The auto-generation function SHALL use default values for the credential: `role:
 
 - **WHEN** the `ISSUER_ID` environment variable is not set
 - **THEN** the auto-generated credential SHALL use `"did:trust402:demo-issuer"` as the default `issuerId`
+
+### Requirement: HOLDER_PUBLIC_KEY for document encryption
+
+The auto-generation function SHALL require `HOLDER_PUBLIC_KEY` environment variable for the `register()` call's `holderKey` parameter.
+
+#### Scenario: HOLDER_PUBLIC_KEY is set
+
+- **WHEN** the `HOLDER_PUBLIC_KEY` environment variable is set to a valid secp256k1 compressed public key hex string
+- **THEN** the auto-generation SHALL pass it as `holderKey` to `register()`
+
+#### Scenario: HOLDER_PUBLIC_KEY is not set
+
+- **WHEN** the `HOLDER_PUBLIC_KEY` environment variable is not set
+- **THEN** the auto-generation SHALL fail with an error indicating the variable is required
 
 ### Requirement: .env path resolution fix
 

@@ -5,12 +5,13 @@
 ## 2. Add Environment Variables
 
 - [ ] 2.1 Add `AGENT_ID` and `ISSUER_ID` to `EnvConfig` type and `validateEnv()` in `env.ts` (with defaults `"did:trust402:demo-agent"` and `"did:trust402:demo-issuer"`) [US1]
-- [ ] 2.2 Add `AGENT_ID` and `ISSUER_ID` placeholders to root `.env.example` [US1] [P]
+- [ ] 2.2 Add `HOLDER_PUBLIC_KEY` to `EnvConfig` type and `validateEnv()` in `env.ts` [US1]
+- [ ] 2.3 Add `AGENT_ID`, `ISSUER_ID`, and `HOLDER_PUBLIC_KEY` placeholders to root `.env.example` [US1] [P]
 
 ## 3. Implement Auto-Generation
 
 - [ ] 3.1 Add `@trust402/identity` and `@lemmaoracle/agent` to `@trust402/demo-agent` dependencies (if not already present) [US2]
-- [ ] 3.2 Implement `generateArtifact()` function in `artifact.ts` that creates a default credential, commits, proves, submits, and saves to `ARTIFACT_PATH` [US2]
+- [ ] 3.2 Implement `generateArtifact()` function in `artifact.ts` that creates a default credential, calls `register()` from `@trust402/identity` (which performs commit + encrypt + documents.register), then calls `prove()`, and saves the resulting `{ commitOutput, identityProof, docHash, credential }` to `ARTIFACT_PATH` [US2]
 - [ ] 3.3 Replace the stub `Promise.reject("not yet implemented")` in `loadOrPromptArtifact` with a call to `generateArtifact()` [US2]
 
 ## 4. Verify

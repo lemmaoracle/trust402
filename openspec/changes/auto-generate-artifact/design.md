@@ -1,6 +1,6 @@
 ## Context
 
-The demo agent (`@trust402/demo-agent`) currently has a stub for auto-generating an `IdentityArtifact`. When the artifact file is missing and the user opts in, the agent rejects with "not yet implemented." The `trust402` CLI already provides `create` and `prove` commands that implement the full pipeline (`credential` → `commit` → `prove` → `submit`), so the logic can be reused from `@trust402/identity` and `@lemmaoracle/agent`.
+The demo agent (`@trust402/demo-agent`) currently has a stub for auto-generating an `IdentityArtifact`. When the artifact file is missing and the user opts in, the agent rejects with "not yet implemented." The `trust402` CLI already provides `create` and `prove` commands that implement the full pipeline (`credential` → `register` → `prove` → `submit`), so the logic can be reused from `@trust402/identity` and `@lemmaoracle/agent`.
 
 Additionally, the `.env` path in `cli.ts` resolves to `packages/demo/.env` instead of the monorepo root `trust402/.env`, causing environment variables to not load.
 
@@ -8,10 +8,10 @@ Additionally, the `.env` path in `cli.ts` resolves to `packages/demo/.env` inste
 
 **Goals:**
 - Implement auto-generation of IdentityArtifact when the user confirms
-- Reuse `@trust402/identity` (commit, prove, submit) and `@lemmaoracle/agent` (credential) in the demo agent
-- Add `AGENT_ID` and `ISSUER_ID` environment variables for customizing the generated credential
+- Reuse `@trust402/identity` (`register`, `prove`) and `@lemmaoracle/agent` (`credential`) in the demo agent
+- Add `AGENT_ID`, `ISSUER_ID`, and `HOLDER_PUBLIC_KEY` environment variables for customizing the generated credential
 - Fix the `.env` path resolution in `cli.ts`
-- Persist the generated artifact to `ARTIFACT_PATH` for reuse on subsequent runs
+- Persist the generated artifact (including `docHash` and `credential`) to `ARTIFACT_PATH` for reuse on subsequent runs
 
 **Non-Goals:**
 - Auto-generating without user confirmation
@@ -21,11 +21,11 @@ Additionally, the `.env` path in `cli.ts` resolves to `packages/demo/.env` inste
 
 ## Decisions
 
-### D1: Reuse @trust402/identity package functions directly
+### D1: Reuse @trust402/identity register + prove functions directly
 
-**Decision**: Import `commit`, `prove`, `submit` from `@trust402/identity` and `credential` from `@lemmaoracle/agent` directly in the demo agent, rather than spawning the `trust402` CLI as a subprocess.
+**Decision**: Import `register`, `prove` from `@trust402/identity` and `credential` from `@lemmaoracle/agent` directly in the demo agent, rather than spawning the `trust402` CLI as a subprocess.
 
-**Rationale**: Direct function calls are more reliable, faster, and produce structured results that can be directly saved as an artifact file. Spawning a subprocess would require parsing stdout JSON and handling exit codes.
+**Rationale**: `register()` performs `agentCommit()` → `encrypt()` → `documents.register()` internally and returns `{ docHash, cid, commitOutput }`. The `commitOutput` is then passed to `prove()`. This is the canonical flow after the credential-document-registration change. Direct function calls are more reliable, faster, and produce structured results that can be directly saved as an artifact file.
 
 **Alternative**: Spawn `trust402 create` + `trust402 prove` as child processes — rejected because of fragility (stdout parsing, error handling) and unnecessary process overhead.
 
@@ -42,6 +42,12 @@ Additionally, the `.env` path in `cli.ts` resolves to `packages/demo/.env` inste
 **Decision**: Change `path.resolve(import.meta.dirname, "..", "..", "..", ".env")` to `path.resolve(import.meta.dirname, "..", "..", "..", "..", ".env")` in `cli.ts`.
 
 **Rationale**: `import.meta.dirname` is `trust402/packages/demo/agent/src/`. Four levels up reaches `trust402/`, which is where the root `.env` file lives. This matches the pattern used by `register-circuit.ts` and other scripts that reference the monorepo root `.env`.
+
+### D4: HOLDER_PUBLIC_KEY required for register()
+
+**Decision**: `HOLDER_PUBLIC_KEY` is a required environment variable for auto-generation since `register()` needs the holder's public key for ECIES encryption of the document.
+
+**Rationale**: The `register()` function in `@trust402/identity` requires `holderKey` (a secp256k1 compressed public key hex) to encrypt the credential payload before registering with the oracle. This key must be provided by the user via environment variable.
 
 ## Risks / Trade-offs
 
