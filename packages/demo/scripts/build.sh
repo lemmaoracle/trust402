@@ -11,7 +11,7 @@ CIRCUIT_ID="financial-data-v1"
 CIRCOMLIB_DIR="$CIRCUIT_DIR/node_modules"
 BUILD_DIR="$CIRCUIT_DIR/build"
 PTAU_DIR="$BUILD_DIR/ptau"
-SNARKJS="npx snarkjs"
+SNARKJS="$CIRCUIT_DIR/node_modules/.bin/snarkjs"
 
 # ── Step 1: Circom compilation ──────────────────────────────────────────
 
@@ -29,6 +29,7 @@ circom "$CIRCUIT_DIR/circuits/$CIRCUIT_NAME.circom" \
 mv "$BUILD_DIR/$CIRCUIT_NAME.r1cs" "$BUILD_DIR/${CIRCUIT_ID}.r1cs" 2>/dev/null || true
 mv "$BUILD_DIR/$CIRCUIT_NAME.sym" "$BUILD_DIR/${CIRCUIT_ID}.sym" 2>/dev/null || true
 if [ -d "$BUILD_DIR/${CIRCUIT_NAME}_js" ]; then
+  rm -rf "$BUILD_DIR/${CIRCUIT_ID}_js"
   mv "$BUILD_DIR/${CIRCUIT_NAME}_js" "$BUILD_DIR/${CIRCUIT_ID}_js"
   mv "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_NAME}.wasm" "$BUILD_DIR/${CIRCUIT_ID}_js/${CIRCUIT_ID}.wasm"
 fi

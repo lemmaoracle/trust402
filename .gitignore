@@ -142,6 +142,9 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
+# Rust build artifacts
+target/
+
 # Circom / snarkjs build artifacts
 **/circuits/build/
 *.r1cs

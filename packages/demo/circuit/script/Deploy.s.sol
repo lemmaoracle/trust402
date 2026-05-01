@@ -2,13 +2,15 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "FinancialDataVerifier.sol";
+import {Groth16Verifier} from "../build/FinancialDataVerifier.sol";
 
 contract DeployFinancialDataVerifier is Script {
     function run() external {
-        vm.startBroadcast();
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
-        FinancialDataVerifier verifier = new FinancialDataVerifier();
+        vm.startBroadcast(deployerPrivateKey);
+
+        Groth16Verifier verifier = new Groth16Verifier();
 
         vm.stopBroadcast();
 
