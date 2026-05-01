@@ -1,0 +1,6 @@
+# Forge build artifacts
+out/
+cache/
+
+# Circom / snarkjs build artifacts (includes generated verifier)
+build/

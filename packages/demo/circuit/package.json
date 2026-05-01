@@ -1,0 +1,15 @@
+{
+  "name": "@trust402/demo-circuit",
+  "version": "0.0.1",
+  "description": "Demo Circom circuit for financial data attestation verification",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "../scripts/build.sh",
+    "test": "echo \"Circuit tests run via snarkjs\""
+  },
+  "dependencies": {
+    "circomlib": "^2.0.5",
+    "snarkjs": "^0.7.6"
+  }
+}
