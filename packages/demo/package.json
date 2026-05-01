@@ -1,0 +1,21 @@
+{
+  "name": "@trust402/demo",
+  "version": "0.0.1",
+  "description": "CLI demo showcasing the Trust402 agent payment flow with Lemma attestation verification",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "./scripts/build.sh",
+    "deploy-verifier": "cd circuit && forge script script/Deploy.s.sol --rpc-url base-sepolia --broadcast",
+    "register": "tsx scripts/register.ts"
+  },
+  "devDependencies": {
+    "@lemmaoracle/sdk": "^0.0.23",
+    "@lemmaoracle/spec": "^0.0.22",
+    "dotenv": "^16.4.7",
+    "ramda": "^0.30.0",
+    "@types/ramda": "^0.30.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}

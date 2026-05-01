@@ -7,7 +7,12 @@
     "test": "pnpm -r test",
     "type-check": "pnpm -r type-check",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "demo:resource": "tsx packages/demo/resource/src/server.ts",
+    "demo:agent": "tsx packages/demo/agent/src/cli.ts",
+    "demo:build": "pnpm --filter @trust402/demo build",
+    "demo:deploy-verifier": "pnpm --filter @trust402/demo deploy-verifier",
+    "demo:register": "pnpm --filter @trust402/demo register"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
