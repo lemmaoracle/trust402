@@ -77,6 +77,10 @@ importers:
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)
 
   packages/demo:
+    dependencies:
+      poseidon-lite:
+        specifier: ^0.3.0
+        version: 0.3.0
     devDependencies:
       '@lemmaoracle/sdk':
         specifier: ^0.0.23
@@ -120,6 +124,12 @@ importers:
       '@trust402/roles':
         specifier: workspace:*
         version: link:../../roles
+      '@x402/core':
+        specifier: ^2.11.0
+        version: 2.11.0
+      '@x402/evm':
+        specifier: ^2.11.0
+        version: 2.11.0(typescript@5.9.3)
       '@x402/fetch':
         specifier: ^2.11.0
         version: 2.11.0(typescript@5.9.3)
