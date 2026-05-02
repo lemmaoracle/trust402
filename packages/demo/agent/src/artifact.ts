@@ -9,6 +9,7 @@ import type { ProveInput } from "@trust402/identity";
 import type { IdentityArtifact, CommitOutput, ProveOutput } from "@trust402/protocol";
 import type { AgentCredential } from "@trust402/identity";
 import type { EnvConfig } from "./env.js";
+import { waitForKeypress } from "./tui.js";
 
 const SCHEMA_ID = "agent-identity-authority-v1";
 
@@ -156,6 +157,16 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
   return artifact;
 };
 
+const formatUsd = (cents: number): string =>
+  `$${(cents / 100).toFixed(2)}`;
+
+const displayBudgetTable = (env: EnvConfig): void => {
+  console.log(chalk.cyan("\n━━━ Agent Budget ━━━\n"));
+  console.log(`  Role:       purchaser`);
+  console.log(`  Max Spend:  ${formatUsd(env.maxSpend)}`);
+  console.log();
+};
+
 export const loadOrPromptArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
   const artifact = readArtifactFile(env.artifactPath);
 
@@ -173,5 +184,10 @@ export const loadOrPromptArtifact = async (env: EnvConfig): Promise<IdentityArti
       : Promise.reject(new Error("IdentityArtifact is required. Exiting."));
   };
 
-  return R.isNil(artifact) ? handleMissing() : artifact;
+  const loadedArtifact = R.isNil(artifact) ? await handleMissing() : artifact;
+
+  displayBudgetTable(env);
+  await waitForKeypress("Continue to query");
+
+  return loadedArtifact;
 };

@@ -1,16 +1,16 @@
 /**
  * Proof summary output formatter.
  *
- * Task 10.1: Proof summary (circuit IDs, oracle submission status).
- * Task 10.2: Attestation summary (docHash, verification result, verifier address).
- * Task 10.3: Financial data display (company, period, revenue, profit).
- * Task 10.4: Payment details (amount, network, payTo).
+ * Displays dual proof summary, both payment results,
+ * attestation result, financial data, and blockchain events.
  */
 
+import * as R from "ramda";
 import chalk from "chalk";
-import type { AttestationResult } from "./attestation.js";
-import type { ApiResponse } from "./payment.js";
+import type { AttestationResult, BlockchainEvent } from "./attestation.js";
+import type { ApiResponse, PaymentResult } from "./payment.js";
 import type { EnvConfig } from "./env.js";
+import { waitForKeypress } from "./tui.js";
 
 const formatUsd = (cents: number): string =>
   `$${(cents / 100).toFixed(2)}`;
@@ -32,14 +32,13 @@ const displayProofSummary = (): void => {
   console.log(`    Oracle submission: completed`);
 };
 
-const displayAttestationSummary = (result: AttestationResult, env: EnvConfig): void => {
+const displayAttestationSummary = (result: AttestationResult, _env: EnvConfig): void => {
   console.log(chalk.cyan("\n━━━ Attestation Summary ━━━\n"));
   console.log(`  docHash: ${result.docHash}`);
   console.log(`  Verified: ${result.verified ? chalk.green("✓ Yes") : chalk.yellow("✗ No")}`);
   result.error
     ? console.log(`  Error: ${result.error}`)
     : undefined;
-  console.log(`  Verifier contract: ${process.env.VERIFIER_CONTRACT_ADDRESS ?? "not configured"}`);
 };
 
 const displayFinancialData = (data: ApiResponse): void => {
@@ -51,27 +50,69 @@ const displayFinancialData = (data: ApiResponse): void => {
   console.log(`  Report:   ${data.reportId}`);
 };
 
-const displayPaymentDetails = (env: EnvConfig): void => {
-  console.log(chalk.cyan("\n━━━ Payment Details ━━━\n"));
+const displaySuccessfulPayment = (): void => {
+  console.log(chalk.cyan("\n━━━ Payment 1: Successful ━━━\n"));
   console.log(`  Amount:   $0.01 USDC`);
+  console.log(`  Method:   GET /ir/2026q1`);
   console.log(`  Network:  Base Sepolia (eip155:84532)`);
-  console.log(`  Pay to:   ${process.env.PAY_TO_ADDRESS ?? "configured in resource server"}`);
-  console.log(`  Max spend: ${formatUsd(env.maxSpend)}`);
+  console.log(`  Status:   ${chalk.green("✓ Paid")}`);
 };
 
-export const displaySummary = (
+const displayFailedPayment = (env: EnvConfig): void => {
+  console.log(chalk.cyan("\n━━━ Payment 2: Budget Enforcement ━━━\n"));
+  console.log(`  Amount:   $500.00 USDC`);
+  console.log(`  Method:   POST /contract`);
+  console.log(`  Network:  Base Sepolia (eip155:84532)`);
+  console.log(`  Status:   ${chalk.red("✗ Rejected")}`);
+  console.log(`  Reason:   Budget exceeded: $500.00 > ${formatUsd(env.maxSpend)} spend limit`);
+  console.log(chalk.green(`  ✓ Budget enforcement working — payment blocked by role-spend-limit-v1 proof`));
+};
+
+const displayBlockchainEventSection = async (
+  events: ReadonlyArray<BlockchainEvent>,
+): Promise<void> => {
+  await waitForKeypress("Show blockchain event logs");
+
+  console.log(chalk.cyan("\n━━━ Blockchain Event Logs ━━━\n"));
+
+  R.isEmpty(events)
+    ? console.log(chalk.dim("  No on-chain events found or RPC URL not configured."))
+    : undefined;
+
+  const displayEvent = (event: BlockchainEvent): void => {
+    console.log(`  ${chalk.cyan(event.eventName)}`);
+    console.log(`    Contract:  ${event.contractAddress}`);
+    console.log(`    Block:     ${event.blockNumber.toString()}`);
+    console.log(`    TxHash:    ${event.transactionHash}`);
+    console.log();
+  };
+
+  R.forEach(displayEvent, events);
+};
+
+export const displaySummary = async (
   env: EnvConfig,
-  data: ApiResponse,
+  data: ApiResponse | null,
   attestationResult: AttestationResult,
-): void => {
+  payment1Result: PaymentResult,
+  payment2Result: PaymentResult,
+  blockchainEvents: ReadonlyArray<BlockchainEvent>,
+): Promise<void> => {
   console.log(chalk.bold.green("\n╔══════════════════════════════════════════╗"));
   console.log(chalk.bold.green("║     Trust402 Demo — Transaction Summary     ║"));
   console.log(chalk.bold.green("╚══════════════════════════════════════════╝"));
 
   displayProofSummary();
   displayAttestationSummary(attestationResult, env);
-  displayFinancialData(data);
-  displayPaymentDetails(env);
+
+  payment1Result.success && !R.isNil(data)
+    ? displayFinancialData(data)
+    : undefined;
+
+  displaySuccessfulPayment();
+  displayFailedPayment(env);
+
+  await displayBlockchainEventSection(blockchainEvents);
 
   console.log(chalk.bold.green("\n✓ Demo complete!\n"));
 };

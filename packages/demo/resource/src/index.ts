@@ -7,6 +7,7 @@
  *
  * Endpoints:
  *   GET /ir/:reportId  — Financial data ($0.01 USDC, includes docHash attestation)
+ *   POST /contract     — High-value contract data ($500 USDC, includes docHash attestation)
  *   GET /              — Health check
  */
 
@@ -45,6 +46,16 @@ type FinancialReport = Readonly<{
   profit: number;
 }>;
 
+type ContractData = Readonly<{
+  type: string;
+  description: string;
+  vendor: string;
+  price: string;
+  currency: string;
+  period: string;
+  attestation: string | null;
+}>;
+
 type AttestedReport = FinancialReport & Readonly<{
   attestation: string | null;
 }>;
@@ -59,6 +70,18 @@ const REPORTS: Readonly<Record<string, FinancialReport>> = {
     revenue: 1250000000,
     profit: 340000000,
   },
+};
+
+// ── Hardcoded contract data ───────────────────────────────────────────
+
+const CONTRACT_DATA: ContractData = {
+  type: "contract",
+  description: "Master Service Agreement — Full historical financial data access for Example Corp",
+  vendor: "Example Corp",
+  price: "$500",
+  currency: "USDC",
+  period: "Full History",
+  attestation: null,
 };
 
 // ── Pre-registered docHash loading ─────────────────────────────────────
@@ -96,6 +119,23 @@ const buildRoutes = (payTo: string) => ({
       },
     ],
     description: "Corporate IR financial data with Lemma-verified attestation",
+    mimeType: "application/json",
+    extensions: { lemma: {} },
+  },
+  "POST /contract": {
+    accepts: [
+      {
+        scheme: "exact" as const,
+        price: "$500",
+        network: "eip155:84532" as const,
+        payTo,
+        extra: {
+          name: "USDC",
+          version: "2",
+        },
+      },
+    ],
+    description: "High-value corporate contract API with Lemma-verified attestation",
     mimeType: "application/json",
     extensions: { lemma: {} },
   },
@@ -166,6 +206,22 @@ app.get("/ir/:reportId", (c) => {
   return c.json(response, status as 200);
 });
 
+// ── POST /contract ────────────────────────────────────────────────────
+
+app.post("/contract", (c) => {
+  const docHash = R.prop("contract", registeredDocs);
+
+  const attestation: string | null = R.isNil(docHash) ? null : docHash;
+
+  R.isNil(docHash)
+    ? c.header("X-Attestation-Warning", "not-registered")
+    : undefined;
+
+  const response: ContractData = { ...CONTRACT_DATA, attestation };
+
+  return c.json(response, 200);
+});
+
 // ── Health check ───────────────────────────────────────────────────────
 
 app.get("/", (c) =>
@@ -183,6 +239,7 @@ const start = (): void => {
   console.log(`Trust402 demo resource server starting on port ${PORT}`);
   console.log(`Endpoints:`);
   console.log(`  GET /ir/:reportId  — Corporate IR financial data ($0.01 USDC)`);
+  console.log(`  POST /contract     — High-value contract data ($500 USDC)`);
   console.log(`  GET /              — Health check`);
 };
 
