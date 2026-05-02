@@ -4,15 +4,21 @@ import * as fs from "node:fs";
 import * as readline from "node:readline";
 import { credential } from "@lemmaoracle/agent";
 import { create, schemas, define } from "@lemmaoracle/sdk";
-import { register as registerIdentity, prove as proveIdentity } from "@trust402/identity";
-import type { ProveInput } from "@trust402/identity";
-import type { IdentityArtifact, CommitOutput, ProveOutput } from "@trust402/protocol";
+import {
+  register as registerIdentity,
+  prove as proveIdentity,
+  submit as submitIdentity,
+} from "@trust402/identity";
+import type { CommitOutput } from "@trust402/identity";
+import type { ProveOutput } from "@lemmaoracle/sdk";
+import type { IdentityArtifact } from "@trust402/protocol";
 import type { AgentCredential } from "@trust402/identity";
 import type { EnvConfig } from "./env.js";
 import { waitForKeypress } from "./tui.js";
 import { poseidon1, poseidon2 } from "poseidon-lite";
 
 const SCHEMA_ID = "agent-identity-authority-v1";
+const DEMO_ISSUER_SECRET_KEY = "1";
 
 const isNormalizedError = (normalized: unknown): normalized is { error: string } =>
   typeof normalized === "object" && normalized !== null && "error" in normalized;
@@ -109,14 +115,25 @@ const saveArtifact = (filePath: string, artifact: IdentityArtifact): void => {
   fs.writeFileSync(filePath, json + "\n", "utf8");
 };
 
+const computeIssuerProof = (commitmentRoot: string): Readonly<{
+  issuerPublicKey: string;
+  mac: string;
+}> => {
+  const issuerPublicKey = poseidon1([BigInt(DEMO_ISSUER_SECRET_KEY)]).toString();
+  const mac = poseidon2([BigInt(commitmentRoot), BigInt(DEMO_ISSUER_SECRET_KEY)]).toString();
+  return { issuerPublicKey, mac };
+};
+
 const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
   const cred = createTestCredential(env);
   const client = create({ apiKey: env.lemmaApiKey });
 
+  // ── Step 1: Load schema ────────────────────────────────────────────
   console.log(chalk.cyan("  Loading schema..."));
   const schemaMeta = await schemas.getById(client, SCHEMA_ID);
   await define(schemaMeta);
 
+  // ── Step 2: Register (commit + encrypt + documents.register) ───────
   console.log(chalk.cyan("  Registering document..."));
   const registerResult = await registerIdentity(client, {
     credential: cred,
@@ -130,10 +147,8 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
     ));
   }
 
-  const DEMO_ISSUER_SECRET_KEY = "1";
-
-  const issuerPublicKey = poseidon1([BigInt(DEMO_ISSUER_SECRET_KEY)]).toString();
-  const mac = poseidon2([BigInt(registerResult.commitOutput.root), BigInt(DEMO_ISSUER_SECRET_KEY)]).toString();
+  // ── Step 3: Prove (generate identity proof) ────────────────────────
+  const { issuerPublicKey, mac } = computeIssuerProof(registerResult.commitOutput.root);
 
   let proofResult: ProveOutput;
   try {
@@ -149,6 +164,15 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
     console.log(chalk.yellow(`    Error: ${err instanceof Error ? err.message : String(err)}`));
     proofResult = { proof: "", inputs: [] };
   }
+
+  // ── Step 4: Submit (publish proof to oracle) ──────────────────────
+  const hasProof = proofResult.proof !== "";
+  hasProof
+    ? (console.log(chalk.cyan("  Submitting proof to oracle...")),
+       await submitIdentity(client, registerResult.docHash, proofResult).catch((err: unknown) => {
+         console.log(chalk.yellow(`  ⚠ Oracle submission failed: ${err instanceof Error ? err.message : String(err)}`));
+       }))
+    : console.log(chalk.yellow("  ⚠ Skipping oracle submission — no proof generated."));
 
   const artifact: IdentityArtifact = {
     commitOutput: registerResult.commitOutput,
