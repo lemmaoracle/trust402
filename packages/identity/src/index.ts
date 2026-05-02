@@ -52,11 +52,16 @@ export type RegisterOutput = Readonly<{
 
 const DEFAULT_SCHEMA = "passthrough-v1";
 
+const fieldToBytes32 = (value: string): string => {
+  const hex = BigInt(value).toString(16).padStart(64, "0");
+  return `0x${hex}`;
+};
+
 const commitOutputToCommitments = (co: CommitOutput): DocumentCommitments => ({
   scheme: "poseidon" as const,
-  root: co.root,
-  leaves: Object.values(co.sectionHashes),
-  randomness: co.salt,
+  root: fieldToBytes32(co.root),
+  leaves: Object.values(co.sectionHashes).map((h: string) => fieldToBytes32(h)),
+  randomness: co.salt.startsWith("0x") ? co.salt : fieldToBytes32(co.salt),
 });
 
 export const register = (
