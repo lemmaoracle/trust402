@@ -10,6 +10,7 @@ import type { IdentityArtifact, CommitOutput, ProveOutput } from "@trust402/prot
 import type { AgentCredential } from "@trust402/identity";
 import type { EnvConfig } from "./env.js";
 import { waitForKeypress } from "./tui.js";
+import { poseidon1, poseidon2 } from "poseidon-lite";
 
 const SCHEMA_ID = "agent-identity-authority-v1";
 
@@ -129,14 +130,19 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
     ));
   }
 
+  const DEMO_ISSUER_SECRET_KEY = "1";
+
+  const issuerPublicKey = poseidon1([BigInt(DEMO_ISSUER_SECRET_KEY)]).toString();
+  const mac = poseidon2([BigInt(registerResult.commitOutput.root), BigInt(DEMO_ISSUER_SECRET_KEY)]).toString();
+
   let proofResult: ProveOutput;
   try {
     console.log(chalk.cyan("  Generating identity proof..."));
     proofResult = await proveIdentity(client, {
       commitOutput: registerResult.commitOutput,
-      issuerSecretKey: "0",
-      mac: "0",
-      issuerPublicKey: "0",
+      issuerSecretKey: DEMO_ISSUER_SECRET_KEY,
+      mac,
+      issuerPublicKey,
     });
   } catch (err) {
     console.log(chalk.yellow("  ⚠ Identity proof generation failed, saving partial artifact."));

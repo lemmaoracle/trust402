@@ -135,6 +135,9 @@ importers:
       ora:
         specifier: ^8.0.0
         version: 8.2.0
+      poseidon-lite:
+        specifier: ^0.3.0
+        version: 0.3.0
       ramda:
         specifier: ^0.30.0
         version: 0.30.1
