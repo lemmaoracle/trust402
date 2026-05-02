@@ -41,7 +41,7 @@ const readArtifactFile = (filePath: string): IdentityArtifact | null => {
 
   const artifact = parseArtifact(raw);
   if (isNormalizedError(artifact.commitOutput.normalized)) {
-    console.log(chalk.yellow(`⚠️  Artifact at ${filePath} has a failed normalization — removing and regenerating.`));
+    console.log(chalk.yellow(`  ⚠️  Artifact at ${filePath} has a failed normalization — removing and regenerating.`));
     fs.unlinkSync(filePath);
     return null;
   }
@@ -62,23 +62,23 @@ const promptUser = (question: string): Promise<string> =>
   });
 
 const displayArtifactExplanation = (): void => {
-  console.log(chalk.yellow("\n⚠️  No IdentityArtifact found."));
-  console.log("An IdentityArtifact is required to generate ZK proofs for payment.");
-  console.log("It contains:");
-  console.log("  - commit:   The credential commitment output (agent-identity-v1)");
-  console.log("  - proof:    The identity proof from the Lemma oracle");
-  console.log("  - docHash:  The document hash from encrypt + register");
-  console.log("  - credential: The original agent credential\n");
-  console.log("To generate one, run:");
-  console.log(chalk.cyan("  trust402 create --agent-id <id> --subject-id <id> --roles <roles> --issuer-id <id> > credential.json"));
-  console.log(chalk.cyan("  trust402 prove --credential credential.json --api-key <key> --holder-key <hex> > artifact.json\n"));
+  console.log(chalk.yellow("\n  ⚠️  No IdentityArtifact found."));
+  console.log("  An IdentityArtifact is required to generate ZK proofs for payment.");
+  console.log("  It contains:");
+  console.log("    - commit:   The credential commitment output (agent-identity-v1)");
+  console.log("    - proof:    The identity proof from the Lemma oracle");
+  console.log("    - docHash:  The document hash from encrypt + register");
+  console.log("    - credential: The original agent credential\n");
+  console.log("  To generate one, run:");
+  console.log(chalk.cyan("    trust402 create --agent-id <id> --subject-id <id> --roles <roles> --issuer-id <id> > credential.json"));
+  console.log(chalk.cyan("    trust402 prove --credential credential.json --api-key <key> --holder-key <hex> > artifact.json\n"));
 };
 
 const offerAutoGenerate = async (env: EnvConfig): Promise<boolean> => {
   const hasRequiredEnv = R.isNotEmpty(env.lemmaApiKey) && R.isNotEmpty(env.holderPublicKey);
   const prompt = hasRequiredEnv
-    ? "Would you like to auto-generate an artifact? (y/n): "
-    : "Generate manually and re-run. Press 'q' to quit: ";
+    ? "  Would you like to auto-generate an artifact? (y/n): "
+    : "  Generate manually and re-run. Press 'q' to quit: ";
 
   const answer = await promptUser(prompt);
   return answer === "y" || answer === "yes";
@@ -101,7 +101,6 @@ const createTestCredential = (env: EnvConfig): AgentCredential => {
           result.errors,
         );
         process.exit(1);
-        return undefined as never;
       })();
 };
 
@@ -129,16 +128,27 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
   const client = create({ apiKey: env.lemmaApiKey });
 
   // ── Step 1: Load schema ────────────────────────────────────────────
-  console.log(chalk.cyan("  Loading schema..."));
+  console.log(chalk.cyan("    Loading schema..."));
   const schemaMeta = await schemas.getById(client, SCHEMA_ID);
   await define(schemaMeta);
 
   // ── Step 2: Register (commit + encrypt + documents.register) ───────
-  console.log(chalk.cyan("  Registering document..."));
-  const registerResult = await registerIdentity(client, {
-    credential: cred,
-    holderKey: env.holderPublicKey,
-  });
+  console.log(chalk.cyan("    Registering document..."));
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    const message = args.map(String).join(" ");
+    originalWarn(message.split("\n").map((line) => `    ${line}`).join("\n"));
+  };
+
+  let registerResult;
+  try {
+    registerResult = await registerIdentity(client, {
+      credential: cred,
+      holderKey: env.holderPublicKey,
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
 
   if (isNormalizedError(registerResult.commitOutput.normalized)) {
     return Promise.reject(new Error(
@@ -152,7 +162,7 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
 
   let proofResult: ProveOutput;
   try {
-    console.log(chalk.cyan("  Generating identity proof..."));
+    console.log(chalk.cyan("    Generating identity proof..."));
     proofResult = await proveIdentity(client, {
       commitOutput: registerResult.commitOutput,
       issuerSecretKey: DEMO_ISSUER_SECRET_KEY,
@@ -160,19 +170,19 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
       issuerPublicKey,
     });
   } catch (err) {
-    console.log(chalk.yellow("  ⚠ Identity proof generation failed, saving partial artifact."));
-    console.log(chalk.yellow(`    Error: ${err instanceof Error ? err.message : String(err)}`));
+    console.log(chalk.yellow("    ⚠ Identity proof generation failed, saving partial artifact."));
+    console.log(chalk.yellow(`      Error: ${err instanceof Error ? err.message : String(err)}`));
     proofResult = { proof: "", inputs: [] };
   }
 
   // ── Step 4: Submit (publish proof to oracle) ──────────────────────
   const hasProof = proofResult.proof !== "";
   hasProof
-    ? (console.log(chalk.cyan("  Submitting proof to oracle...")),
+    ? (console.log(chalk.cyan("    Submitting proof to oracle...")),
        await submitIdentity(client, registerResult.docHash, proofResult).catch((err: unknown) => {
-         console.log(chalk.yellow(`  ⚠ Oracle submission failed: ${err instanceof Error ? err.message : String(err)}`));
+         console.log(chalk.yellow(`    ⚠ Oracle submission failed: ${err instanceof Error ? err.message : String(err)}`));
        }))
-    : console.log(chalk.yellow("  ⚠ Skipping oracle submission — no proof generated."));
+    : console.log(chalk.yellow("    ⚠ Skipping oracle submission — no proof generated."));
 
   const artifact: IdentityArtifact = {
     commitOutput: registerResult.commitOutput,
@@ -182,7 +192,7 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
   };
 
   saveArtifact(env.artifactPath, artifact);
-  console.log(chalk.green(`  ✓ Artifact saved to ${env.artifactPath}`));
+  console.log(chalk.green(`    ✓ Artifact saved to ${env.artifactPath}`));
 
   return artifact;
 };
@@ -191,9 +201,9 @@ const formatUsd = (cents: number): string =>
   `$${(cents / 100).toFixed(2)}`;
 
 const displayBudgetTable = (env: EnvConfig): void => {
-  console.log(chalk.cyan("\n━━━ Agent Budget ━━━\n"));
-  console.log(`  Role:       purchaser`);
-  console.log(`  Max Spend:  ${formatUsd(env.maxSpend)}`);
+  console.log(chalk.cyan("\n  ━━━ Agent Budget ━━━\n"));
+  console.log(`    Role:       purchaser`);
+  console.log(`    Max Spend:  ${formatUsd(env.maxSpend)}`);
   console.log();
 };
 
@@ -202,7 +212,7 @@ export const loadOrPromptArtifact = async (env: EnvConfig): Promise<IdentityArti
 
   const artifactFound = !R.isNil(artifact);
   artifactFound
-    ? console.log(chalk.green(`✓ IdentityArtifact loaded from ${env.artifactPath}`))
+    ? console.log(chalk.green(`  ✓ IdentityArtifact loaded from ${env.artifactPath}`))
     : undefined;
 
   const handleMissing = async (): Promise<IdentityArtifact> => {
@@ -211,7 +221,7 @@ export const loadOrPromptArtifact = async (env: EnvConfig): Promise<IdentityArti
 
     return shouldGenerate
       ? generateArtifact(env)
-      : Promise.reject(new Error("IdentityArtifact is required. Exiting."));
+      : Promise.reject(new Error("  IdentityArtifact is required. Exiting."));
   };
 
   const loadedArtifact = R.isNil(artifact) ? await handleMissing() : artifact;

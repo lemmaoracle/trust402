@@ -7,6 +7,8 @@
 import * as R from "ramda";
 import fs from "node:fs";
 import path from "node:path";
+import chalk from "chalk";
+import { typewriter } from "./tui";
 
 const SKILL_MD_PATH = path.resolve(
   process.cwd(),
@@ -43,14 +45,15 @@ const condenseSummary = (content: string): string => {
     (line: string) => R.startsWith("#", line) || R.startsWith("-", line) || R.startsWith("1.", line) || R.startsWith("2.", line) || R.startsWith("3.", line),
     lines,
   );
-  return R.take(30, summaryLines).join("\n");
+  return R.take(15, summaryLines).join("\n  ");
 };
 
-export const displaySkillSummary = (): void => {
+export const displaySkillSummary = async (): Promise<void> => {
   const content = loadSkillMd();
   const summary = condenseSummary(content);
 
-  console.log("\n━━━ Trust402 Protocol Summary ━━━\n");
-  console.log(summary);
-  console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+  console.log(chalk.bold.cyan("\n  Loading SKILL.md...\n"));
+  await typewriter(chalk.dim(summary), { delay: 0.1 });
+  console.log(chalk.bold.cyan("\n  Successfully loaded SKILL.md\n"));
+  console.log(chalk.dim("\n  ────────────────────────────────\n"));
 };

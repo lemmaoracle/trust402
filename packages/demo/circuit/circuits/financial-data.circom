@@ -1,46 +1,69 @@
 pragma circom 2.1.0;
 
 include "circomlib/circuits/poseidon.circom";
+include "circomlib/circuits/mux1.circom";
 
 /**
- * FinancialData — proves that a set of financial data fields
- * hash to a claimed docHash (attestation).
+ * FinancialDataInclusion — proves that a named attribute
+ * exists in the commitment Merkle tree.
  *
- * Private inputs:
- *   reportId       Field element for the report identifier
- *   company        Field element for the company name
- *   period         Field element for the reporting period
- *   revenue        Revenue in USD (integer)
- *   profit         Profit in USD (integer)
+ * Mirrors the SDK's commitNormalized() structure:
+ *   leaf = Poseidon3(nameHash, valueHash, blinding)
+ *   root = Poseidon2 binary Merkle tree over leaves
  *
  * Public input:
- *   claimedDocHash  The expected hash, verifiable via the Lemma oracle
+ *   commitmentRoot   Merkle root from SDK prepare.commitments.root
  *
- * Constraint:
- *   Poseidon5(reportId, company, period, revenue, profit) === claimedDocHash
+ * Private inputs:
+ *   nameHash         SHA-256(field_name) mod P
+ *   valueHash        SHA-256(field_value) mod P
+ *   blinding         Randomness field element
+ *   pathElements[DEPTH]  Merkle sibling hashes
+ *   pathIndices[DEPTH]   0=left, 1=right
  */
 
-template FinancialData() {
-    // ── Private inputs ──────────────────────────────────────────────
-    signal input reportId;
-    signal input company;
-    signal input period;
-    signal input revenue;
-    signal input profit;
+template FinancialDataInclusion(DEPTH) {
+    // ── Public input ───────────────────────────────────────────────
+    signal input commitmentRoot;
 
-    // ── Public input ────────────────────────────────────────────────
-    signal input claimedDocHash;
+    // ── Private inputs ─────────────────────────────────────────────
+    signal input nameHash;
+    signal input valueHash;
+    signal input blinding;
+    signal input pathElements[DEPTH];
+    signal input pathIndices[DEPTH];
 
-    // Compute Poseidon hash of all financial data fields
-    component hasher = Poseidon(5);
-    hasher.inputs[0] <== reportId;
-    hasher.inputs[1] <== company;
-    hasher.inputs[2] <== period;
-    hasher.inputs[3] <== revenue;
-    hasher.inputs[4] <== profit;
+    // 1. Compute leaf = Poseidon3(nameHash, valueHash, blinding)
+    component leafHasher = Poseidon(3);
+    leafHasher.inputs[0] <== nameHash;
+    leafHasher.inputs[1] <== valueHash;
+    leafHasher.inputs[2] <== blinding;
 
-    // Assert that the computed hash matches the claimed docHash
-    hasher.out === claimedDocHash;
+    // 2. Merkle inclusion proof
+    component hashers[DEPTH];
+    component muxes[DEPTH];
+
+    signal hashes[DEPTH + 1];
+    hashes[0] <== leafHasher.out;
+
+    for (var i = 0; i < DEPTH; i++) {
+        hashers[i] = Poseidon(2);
+        muxes[i] = MultiMux1(2);
+
+        muxes[i].c[0][0] <== hashes[i];
+        muxes[i].c[0][1] <== pathElements[i];
+        muxes[i].c[1][0] <== pathElements[i];
+        muxes[i].c[1][1] <== hashes[i];
+        muxes[i].s        <== pathIndices[i];
+
+        hashers[i].inputs[0] <== muxes[i].out[0];
+        hashers[i].inputs[1] <== muxes[i].out[1];
+        hashes[i + 1]        <== hashers[i].out;
+    }
+
+    // 3. Assert computed root matches commitmentRoot
+    hashes[DEPTH] === commitmentRoot;
 }
 
-component main {public [claimedDocHash]} = FinancialData();
+// Depth 3 = 8 leaves (5 attributes + 3 padding zeros)
+component main {public [commitmentRoot]} = FinancialDataInclusion(3);

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CIRCUIT_NAME="financial-data"
-CIRCUIT_ID="financial-data-v1"
+CIRCUIT_ID="financial-data-v1.5"
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SRC_DIR="$SCRIPT_DIR/circuits"
 BUILD_DIR="$SCRIPT_DIR/build"

@@ -30,7 +30,18 @@ const installSigintHandler = (): void => {
       }), sigintHandlerInstalled = true);
 };
 
-// ── waitForKeypress ───────────────────────────────────────────────────
+// ── displayPhaseBanner ───────────────────────────────────────────────────
+
+export const displayPhaseBanner = (title: string, color: "gray" | "greenBright" | "green" = "gray"): void => {
+  const WIDTH = 60;
+  const padding = Math.max(0, WIDTH - title.length);
+  const leftPad = Math.floor(padding / 2);
+  const rightPad = padding - leftPad;
+  const paddedTitle = `${" ".repeat(leftPad)}${title}${" ".repeat(rightPad)}`;
+
+  const bgChalk = color === "greenBright" ? chalk.bgGreenBright : color === "green" ? chalk.bgGreen : chalk.bgGray;
+  console.log(`\n${bgChalk.black.bold(paddedTitle)}\n`);
+};
 
 export const waitForKeypress = async (prompt = "Press any key to continue"): Promise<void> => {
   installSigintHandler();

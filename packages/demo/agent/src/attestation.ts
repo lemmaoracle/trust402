@@ -16,6 +16,7 @@ import { typewriter } from "./tui.js";
 type AttestationResult = Readonly<{
   docHash: string;
   verified: boolean;
+  rawResponse?: Record<string, unknown>;
   error?: string;
 }>;
 
@@ -86,7 +87,7 @@ const verifyWithLemma = async (
     .then((data) => {
       const results = data.results as ReadonlyArray<Record<string, unknown>>;
       const hasProof = R.isNotEmpty(results) && !R.isNil(R.head(results)?.proof);
-      return { docHash, verified: hasProof };
+      return { docHash, verified: hasProof, rawResponse: data };
     })
     .catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
@@ -122,13 +123,22 @@ export const verifyAttestation = async (
       : "Attestation could not be verified";
 
     result.verified
-      ? console.log(chalk.green(`\n✓ ${verificationText} (docHash: ${docHash})`))
-      : console.log(chalk.yellow(`\n⚠️  ${verificationText} (docHash: ${docHash})`));
+      ? console.log(chalk.green(`\n  ✓ ${verificationText} (docHash: ${docHash})`))
+      : console.log(chalk.yellow(`\n  ⚠️  ${verificationText} (docHash: ${docHash})`));
 
-    await typewriter(verificationText, { delay: 30 });
+    await typewriter(`  ${verificationText}`, { delay: 30 });
+    console.log();
+
+    if (result.rawResponse) {
+      const summaryJson = JSON.stringify(result.rawResponse, null, 2)
+        .split("\n")
+        .map(line => `    ${chalk.dim(line)}`)
+        .join("\n");
+      console.log(chalk.dim(`\n  Oracle Verification Response:\n${summaryJson}\n`));
+    }
 
     result.error
-      ? console.log(chalk.yellow(`   Error: ${result.error}`))
+      ? console.log(chalk.yellow(`     Error: ${result.error}`))
       : undefined;
 
     return result;
@@ -145,6 +155,30 @@ const createViemClient = (rpcUrl: string) =>
     transport: http(rpcUrl),
   });
 
+const LOG_QUERY_CHUNK_SIZE = 10000n;
+
+const getLogsWithChunking = async <T extends ReadonlyArray<unknown>>(
+  client: ReturnType<typeof createViemClient>,
+  queryFn: (from: bigint, to: bigint) => Promise<T>,
+  fromBlock: bigint,
+  toBlock: bigint,
+): Promise<ReadonlyArray<T[number]>> => {
+  const allLogs: Array<T[number]> = [];
+  let chunkStart = fromBlock;
+
+  while (chunkStart <= toBlock) {
+    const chunkEnd = chunkStart + LOG_QUERY_CHUNK_SIZE - 1n > toBlock
+      ? toBlock
+      : chunkStart + LOG_QUERY_CHUNK_SIZE - 1n;
+
+    const logs = await queryFn(chunkStart, chunkEnd);
+    allLogs.push(...logs);
+    chunkStart = chunkEnd + 1n;
+  }
+
+  return allLogs;
+};
+
 export const queryDocumentRegistered = async (
   rpcUrl: string,
   docHash: string,
@@ -152,13 +186,21 @@ export const queryDocumentRegistered = async (
   const client = createViemClient(rpcUrl);
   const normalizedDocHash = docHash.toLowerCase() as `0x${string}`;
 
-  const logs = await client.getLogs({
-    address: LEMMA_REGISTRY_ADDRESS,
-    event: LEMMA_REGISTRY_ABI[0],
-    args: { docHash: normalizedDocHash },
-    fromBlock: BigInt(0),
-    toBlock: "latest",
-  });
+  const latestBlock = await client.getBlockNumber();
+  const fromBlock = latestBlock > BigInt(100000) ? latestBlock - BigInt(100000) : BigInt(0);
+
+  const logs = await getLogsWithChunking(
+    client,
+    (from, to) => client.getLogs({
+      address: LEMMA_REGISTRY_ADDRESS,
+      event: LEMMA_REGISTRY_ABI[0],
+      args: { docHash: normalizedDocHash },
+      fromBlock: from,
+      toBlock: to,
+    }),
+    fromBlock,
+    latestBlock,
+  );
 
   return R.map(
     (log) => ({
@@ -173,15 +215,30 @@ export const queryDocumentRegistered = async (
 
 export const queryProofSettled = async (
   rpcUrl: string,
+  docHash: string,
 ): Promise<ReadonlyArray<BlockchainEvent>> => {
   const client = createViemClient(rpcUrl);
+  const normalizedDocHash = docHash.toLowerCase() as `0x${string}`;
 
-  const logs = await client.getLogs({
-    address: LEMMA_PROOF_SETTLEMENT_ADDRESS,
-    event: LEMMA_PROOF_SETTLEMENT_ABI[0],
-    fromBlock: BigInt(0),
-    toBlock: "latest",
-  });
+  const latestBlock = await client.getBlockNumber();
+  const fromBlock = latestBlock > BigInt(100000) ? latestBlock - BigInt(100000) : BigInt(0);
+
+  const allLogs = await getLogsWithChunking(
+    client,
+    (from, to) => client.getLogs({
+      address: LEMMA_PROOF_SETTLEMENT_ADDRESS,
+      event: LEMMA_PROOF_SETTLEMENT_ABI[0],
+      args: { docHash: normalizedDocHash },
+      fromBlock: from,
+      toBlock: to,
+    }),
+    fromBlock,
+    latestBlock,
+  );
+
+  // Return only the most recent ProofSettled event
+  const latestLog = R.last(allLogs);
+  const logs = R.isNil(latestLog) ? [] : [latestLog];
 
   return R.map(
     (log) => ({
@@ -206,7 +263,7 @@ export const queryBlockchainEvents = async (
 
   const fetchEvents = async (url: string): Promise<ReadonlyArray<BlockchainEvent>> => {
     const registered = await queryDocumentRegistered(url, docHash);
-    const settled = await queryProofSettled(url);
+    const settled = await queryProofSettled(url, docHash);
     return [...registered, ...settled];
   };
 

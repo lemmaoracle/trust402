@@ -24,7 +24,7 @@ import { loadOrPromptArtifact } from "./artifact.js";
 import { executeProofGatedPayment, type ApiResponse } from "./payment.js";
 import { verifyAttestation, queryBlockchainEvents, type BlockchainEvent } from "./attestation.js";
 import { displaySummary } from "./summary.js";
-import { waitForKeypress, typewriter, asyncSpinner } from "./tui.js";
+import { waitForKeypress, typewriter, asyncSpinner, displayPhaseBanner } from "./tui.js";
 
 config({ path: path.resolve(import.meta.dirname, "..", "..", "..", "..", ".env") });
 
@@ -34,7 +34,7 @@ const formatUsd = (cents: number): string =>
 const main = async (): Promise<void> => {
   // ── Phase 0: Resource startup note ──────────────────────────────
   console.log(chalk.bold.blue("\n🤖 Trust402 Demo Agent\n"));
-  await typewriter("This demo simulates an AI agent paying for verified financial data using ZK proofs and the x402 protocol.", { delay: 20 });
+  console.log("  This demo simulates an AI agent paying for verified financial data using ZK proofs and the x402 protocol.");
 
   // ── Validate environment ────────────────────────────────────────
   const env = validateEnv();
@@ -42,42 +42,49 @@ const main = async (): Promise<void> => {
   console.log(chalk.dim(`\n  Resource server: ${env.resourceUrl}`));
 
   // ── Phase 1: Agent startup with SKILL.md ───────────────────────
-  console.log(chalk.bold.cyan("\n━━━ Phase 1: Agent Startup ━━━\n"));
-  displaySkillSummary();
+  displayPhaseBanner("Phase 1: Agent Startup", "cyan");
+  await displaySkillSummary();
   await waitForKeypress("Continue to identity setup");
 
   // ── Phase 2: Identity generation + budget table ─────────────────
-  console.log(chalk.bold.cyan("\n━━━ Phase 2: Identity & Budget ━━━\n"));
+  displayPhaseBanner("Phase 2: <TRUST402> Identity & Budget", "greenBright");
   const artifact = await loadOrPromptArtifact(env);
 
   // ── MAX_SPEND threshold warning (task 4.4) ─────────────────────
   const maxSpendHigh = env.maxSpend >= 50000;
   maxSpendHigh
-    ? console.log(chalk.yellow(`\n⚠️  Warning: MAX_SPEND is ${formatUsd(env.maxSpend)} — the $500 payment may succeed instead of demonstrating budget enforcement. Set MAX_SPEND < 50000 (e.g., 1000 = $10.00) for the intended demo flow.\n`))
+    ? console.log(chalk.yellow(`\n  ⚠️  Warning: MAX_SPEND is ${formatUsd(env.maxSpend)} — the $500 payment may succeed instead of demonstrating budget enforcement. Set MAX_SPEND < 50000 (e.g., 1000 = $10.00) for the intended demo flow.\n`))
     : undefined;
 
   // ── Phase 3: First query (typewriter) ───────────────────────────
-  console.log(chalk.bold.cyan("\n━━━ Phase 3: User Query ━━━\n"));
+  displayPhaseBanner("Phase 3: User Query", "cyan");
   await displayQuery(1);
   await waitForKeypress("Continue to AI reasoning");
 
   // ── Phase 4: AI reasoning simulation ────────────────────────────
-  console.log(chalk.bold.cyan("\n━━━ Phase 4: AI Reasoning ━━━\n"));
+  displayPhaseBanner("Phase 4: AI Reasoning", "cyan");
   await runReasoningSimulation(1);
 
   // ── Phase 5: First payment — successful $0.01 ──────────────────
-  console.log(chalk.bold.cyan("\n━━━ Phase 5: x402 Payment ($0.01) ━━━\n"));
+  displayPhaseBanner("Phase 5: <TRUST402> Payment ($0.01)", "greenBright");
   await waitForKeypress("Execute first payment");
 
   const url1 = `${env.resourceUrl}/ir/2026q1`;
   const payment1Result = await executeProofGatedPayment(env, artifact, url1, "GET");
 
-  payment1Result.success
-    ? console.log(chalk.green("\n✓ First payment successful: $0.01 USDC for GET /ir/2026q1\n"))
-    : console.log(chalk.red(`\n✗ First payment failed: ${payment1Result.error ?? "unknown error"}\n`));
+  if (payment1Result.success) {
+    console.log(chalk.green("\n  ✓ First payment successful: $0.01 USDC for GET /ir/2026q1"));
+    const data = payment1Result.data as ApiResponse | undefined;
+    if (data && typeof data === "object") {
+      const summaryJson = JSON.stringify(data, null, 2).split("\n").map(line => `    ${line}`).join("\n");
+      console.log(chalk.dim(`\n  Response Summary:\n${summaryJson}\n`));
+    }
+  } else {
+    console.log(chalk.red(`\n  ✗ First payment failed: ${payment1Result.error ?? "unknown error"}\n`));
+  }
 
-  // ── Phase 7: Attestation verification (only for first payment) ──
-  console.log(chalk.bold.cyan("\n━━━ Phase 7: Attestation Verification ━━━\n"));
+  // ── Phase 6: Attestation verification (only for first payment) ──
+  displayPhaseBanner("Phase 6: <TRUST402> Attestation Verification", "greenBright");
 
   const firstPaymentData = payment1Result.success ? payment1Result.data as ApiResponse : null;
 
@@ -85,10 +92,12 @@ const main = async (): Promise<void> => {
     ? await verifyAttestation(env, firstPaymentData)
     : { docHash: "none", verified: false, error: "No data from first payment" };
 
-  // ── Phase 6: Second payment — budget enforcement ───────────────
-  console.log(chalk.bold.cyan("\n━━━ Phase 6: Budget Enforcement ($500) ━━━\n"));
+  await waitForKeypress("Continue to second payment");
 
-  await typewriter("Agent requests the corporate contract — a $500 purchase...", { delay: 30 });
+  // ── Phase 7: Second payment — budget enforcement ───────────────
+  displayPhaseBanner("Phase 7: <TRUST402> Budget Enforcement ($500)", "greenBright");
+
+  console.log("  Agent signs the corporate contract — a $500 purchase...");
   await displayQuery(2);
   await runReasoningSimulation(2);
   await waitForKeypress("Attempt second payment");
@@ -97,11 +106,13 @@ const main = async (): Promise<void> => {
   const payment2Result = await executeProofGatedPayment(env, artifact, url2, "POST");
 
   payment2Result.success
-    ? console.log(chalk.yellow(`\n⚠️  Second payment succeeded unexpectedly — budget not enforced. MAX_SPEND may be too high.\n`))
-    : console.log(chalk.red(`\n✗ Second payment rejected: Budget exceeded: $500.00 > ${formatUsd(env.maxSpend)} spend limit\n`));
+    ? console.log(chalk.yellow(`\n  ⚠️  Second payment succeeded unexpectedly — budget not enforced. MAX_SPEND may be too high.\n`))
+    : console.log(chalk.green(`\n  🛡️  Second payment rejected: Budget exceeded: `)+chalk.bgRed.white(`$500.00 > ${formatUsd(env.maxSpend)} spend limit\n`));
+
+  await waitForKeypress("Continue to transaction summary");
 
   // ── Phase 8: Proof summary with blockchain events ───────────────
-  console.log(chalk.bold.cyan("\n━━━ Phase 8: Transaction Summary ━━━\n"));
+  displayPhaseBanner("Phase 8: Transaction Summary", "green");
 
   const blockchainEvents = await asyncSpinner(
     "Querying blockchain events...",
@@ -117,6 +128,6 @@ const R_isNil = (val: unknown): val is null | undefined =>
 
 main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(chalk.red(`\n✗ Fatal error: ${message}`));
+  console.error(chalk.red(`\n  ✗ Fatal error: ${message}`));
   process.exit(1);
 });

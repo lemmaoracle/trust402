@@ -35,7 +35,7 @@ const displayProofSummary = (): void => {
 const displayAttestationSummary = (result: AttestationResult, _env: EnvConfig): void => {
   console.log(chalk.cyan("\n━━━ Attestation Summary ━━━\n"));
   console.log(`  docHash: ${result.docHash}`);
-  console.log(`  Verified: ${result.verified ? chalk.green("✓ Yes") : chalk.yellow("✗ No")}`);
+  console.log(`  Verified: ${result.verified ? chalk.bgGreen.black.bold(" ✓ Yes ") : chalk.bgRed.white.bold(" ✗ No ")}`);
   result.error
     ? console.log(`  Error: ${result.error}`)
     : undefined;
@@ -55,7 +55,7 @@ const displaySuccessfulPayment = (): void => {
   console.log(`  Amount:   $0.01 USDC`);
   console.log(`  Method:   GET /ir/2026q1`);
   console.log(`  Network:  Base Sepolia (eip155:84532)`);
-  console.log(`  Status:   ${chalk.green("✓ Paid")}`);
+  console.log(`  Status:   ${chalk.bgGreen.black.bold(" ✓ Paid ")}`);
 };
 
 const displayFailedPayment = (env: EnvConfig): void => {
@@ -63,9 +63,9 @@ const displayFailedPayment = (env: EnvConfig): void => {
   console.log(`  Amount:   $500.00 USDC`);
   console.log(`  Method:   POST /contract`);
   console.log(`  Network:  Base Sepolia (eip155:84532)`);
-  console.log(`  Status:   ${chalk.red("✗ Rejected")}`);
+  console.log(`  Status:   ${chalk.bgRed.white.bold(" ✗ Rejected ")}`);
   console.log(`  Reason:   Budget exceeded: $500.00 > ${formatUsd(env.maxSpend)} spend limit`);
-  console.log(chalk.green(`  ✓ Budget enforcement working — payment blocked by role-spend-limit-v1 proof`));
+  console.log(chalk.bgGreen.black.bold(`  ✓ Budget enforcement working — payment blocked by role-spend-limit-v1 proof  `));
 };
 
 const displayBlockchainEventSection = async (
@@ -99,7 +99,7 @@ export const displaySummary = async (
   blockchainEvents: ReadonlyArray<BlockchainEvent>,
 ): Promise<void> => {
   console.log(chalk.bold.green("\n╔══════════════════════════════════════════╗"));
-  console.log(chalk.bold.green("║     Trust402 Demo — Transaction Summary     ║"));
+  console.log(chalk.bold.green("║    Trust402 Demo — Transaction Summary   ║"));
   console.log(chalk.bold.green("╚══════════════════════════════════════════╝"));
 
   displayProofSummary();

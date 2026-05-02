@@ -6,7 +6,7 @@ import {Groth16Verifier} from "../build/FinancialDataVerifier.sol";
 
 contract DeployFinancialDataVerifier is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("HOLDER_PRIVATE_KEY");
 
         vm.startBroadcast(deployerPrivateKey);
 
