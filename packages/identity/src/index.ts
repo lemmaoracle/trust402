@@ -84,19 +84,11 @@ export const register = (
             commitments: commitOutputToCommitments(commitOutput),
             revocation: { root: "" },
             chainId,
-          }).then((response) => {
-            response.onchainWarning
-              ? console.warn(`On-chain registration warning: ${response.onchainWarning}`)
-              : undefined;
-            response.onchainTxHash
-              ? console.log(`On-chain registration tx: ${response.onchainTxHash}`)
-              : undefined;
-            return {
-              docHash: enc.docHash,
-              cid: enc.cid,
-              commitOutput,
-            };
-          }),
+          }).then(() => ({
+            docHash: enc.docHash,
+            cid: enc.cid,
+            commitOutput,
+          })),
         ),
     );
 };

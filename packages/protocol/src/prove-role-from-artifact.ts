@@ -7,7 +7,6 @@ import type { PaymentGate } from "@trust402/roles";
 import type { IdentityArtifact, ProveRoleResult } from "./types.js";
 
 const logWarning = (err: unknown): undefined => {
-  console.warn("Oracle submission failed:", err);
   return undefined;
 };
 
