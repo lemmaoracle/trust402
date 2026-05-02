@@ -53,11 +53,10 @@ export const waitForKeypress = async (prompt = "Press any key to continue"): Pro
   process.stdin.setEncoding("utf8");
 
   await new Promise<void>((resolve) => {
-    const onData = (_data: string): void => {
+    const onData = (): void => {
       supportsRaw
         ? process.stdin.setRawMode(false)
         : undefined;
-      process.stdin.pause();
       process.stdin.removeListener("data", onData);
       process.stdout.write("\n");
       resolve();
