@@ -12,12 +12,13 @@ const logWarning = (err: unknown): undefined => {
 };
 
 const safeSubmit = (
-  submitFn: (client: LemmaClient, docHash: string, proof: ProveOutput) => Promise<unknown>,
+  submitFn: (client: LemmaClient, docHash: string, proof: ProveOutput, chainId?: number) => Promise<unknown>,
   client: LemmaClient,
   docHash: string,
   proof: ProveOutput,
+  chainId?: number,
 ): Promise<unknown> =>
-  submitFn(client, docHash, proof).catch(R.pipe(logWarning, R.always(undefined)));
+  submitFn(client, docHash, proof, chainId).catch(R.pipe(logWarning, R.always(undefined)));
 
 const rejectRoleFailure = (_err: unknown): Promise<never> =>
   Promise.reject(new Error("Role proof generation failed"));
@@ -26,16 +27,18 @@ export const proveRoleFromArtifact = (
   client: LemmaClient,
   artifact: IdentityArtifact,
   gate: PaymentGate,
+  options?: Readonly<{ chainId?: number }>,
 ): Promise<ProveRoleResult> => {
   const commitOutput: CommitOutput = artifact.commitOutput;
   const docHash: string = artifact.docHash;
   const circuitWitness = witness(gate, commitOutput);
+  const chainId = options?.chainId;
 
   return proveRole(client, circuitWitness)
     .catch(rejectRoleFailure)
     .then((roleProof: ProveOutput) => {
-      const identitySubmissionP = safeSubmit(submitIdentity, client, docHash, artifact.identityProof);
-      const roleSubmissionP = safeSubmit(submitRole, client, docHash, roleProof);
+      const identitySubmissionP = safeSubmit(submitIdentity, client, docHash, artifact.identityProof, chainId);
+      const roleSubmissionP = safeSubmit(submitRole, client, docHash, roleProof, chainId);
 
       return Promise.all([identitySubmissionP, roleSubmissionP]).then(
         ([identitySubmission, roleSubmission]) => ({

@@ -97,6 +97,7 @@ export type RegisterInput = Readonly<{
   payload: unknown;
   holderKey: string;
   schema?: string;
+  chainId?: number;
 }>;
 
 export type RegisterOutput = Readonly<{
@@ -118,6 +119,7 @@ export const register = (
   input: RegisterInput,
 ): Promise<RegisterOutput> => {
   const schema = input.schema ?? DEFAULT_SCHEMA;
+  const chainId = input.chainId ?? 84532;
 
   return encrypt(client, { payload: input.payload, holderKey: input.holderKey })
     .then((enc) =>
@@ -129,6 +131,7 @@ export const register = (
         subjectId: "agent",
         commitments: EMPTY_COMMITMENTS,
         revocation: { root: "" },
+        chainId,
       }).then(() => ({ docHash: enc.docHash, cid: enc.cid })),
     );
 };
@@ -147,12 +150,15 @@ export const submit = (
   client: LemmaClient,
   docHash: string,
   proofResult: ProveOutput,
+  chainId: number = 84532,
 ) =>
   proofs.submit(client, {
     docHash,
     circuitId: CIRCUIT_ID,
     proof: proofResult.proof,
     inputs: proofResult.inputs,
+    onchain: true,
+    chainId,
   });
 
 // ── Client factory ─────────────────────────────────────────────────────

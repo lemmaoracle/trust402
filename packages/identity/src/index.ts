@@ -25,7 +25,6 @@ export type {
   ValidationError,
   ValidationErrorKind,
   CredentialOptions,
-  ProveInput,
 };
 
 // ── Constants ──────────────────────────────────────────────────────────
@@ -42,6 +41,7 @@ export type RegisterInput = Readonly<{
   credential: AgentCredential;
   holderKey: string;
   schema?: string;
+  chainId?: number;
 }>;
 
 export type RegisterOutput = Readonly<{
@@ -64,6 +64,7 @@ export const register = (
   input: RegisterInput,
 ): Promise<RegisterOutput> => {
   const schema = input.schema ?? DEFAULT_SCHEMA;
+  const chainId = input.chainId ?? 84532;
 
   return agentCommit(client, input.credential)
     .then((commitOutput) =>
@@ -77,6 +78,7 @@ export const register = (
             subjectId: input.credential.identity.subjectId,
             commitments: commitOutputToCommitments(commitOutput),
             revocation: { root: "" },
+            chainId,
           }).then(() => ({
             docHash: enc.docHash,
             cid: enc.cid,
@@ -132,12 +134,15 @@ export const submit = (
   client: LemmaClient,
   docHash: string,
   proofResult: ProveOutput,
+  chainId: number = 84532,
 ) =>
   proofs.submit(client, {
     docHash,
     circuitId: CIRCUIT_ID,
     proof: proofResult.proof,
     inputs: proofResult.inputs,
+    onchain: true,
+    chainId,
   });
 
 // ── Client factory ─────────────────────────────────────────────────────

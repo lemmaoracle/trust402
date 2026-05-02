@@ -15,7 +15,8 @@ export const wrapFetchWithProof = (
   artifact: IdentityArtifact,
   gate: PaymentGate,
   lemmaClient: LemmaClient,
+  options?: Readonly<{ chainId?: number }>,
 ): typeof fetch =>
   (input: RequestInfo | URL, init?: RequestInit) =>
-    proveRoleFromArtifact(lemmaClient, artifact, gate)
+    proveRoleFromArtifact(lemmaClient, artifact, gate, options)
       .then((result) => proceedToFetch(baseFetch, input, init, result));

@@ -124,14 +124,14 @@ describe("prove", () => {
   it("delegates to prover.prove with agent-identity-v1 circuit and commitOutput as witness", async () => {
     const { prove } = await import("./index.js");
 
-    const result =     const mockProveInput = {
+    const mockProveInput = {
       commitOutput: mockCommitOutput,
       issuerSecretKey: "0x1",
       mac: "0x2",
       issuerPublicKey: "0x3",
     };
 
-    await prove(mockClient, mockProveInput);
+    const result = await prove(mockClient, mockProveInput);
 
     expect(mockProve).toHaveBeenCalledWith(mockClient, {
       circuitId: "agent-identity-v1",
