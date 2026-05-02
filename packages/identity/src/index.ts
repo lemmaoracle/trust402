@@ -98,6 +98,18 @@ export type ProveInput = Readonly<{
   nowSec?: string;
 }>;
 
+const toUnixSeconds = (value: string): string => {
+  const isNumeric = /^\d+$/.test(value);
+  const isNone = value === "none" || value === "" || value === "0";
+
+  const parseIso = (): string => {
+    const ms = Date.parse(value);
+    return Number.isNaN(ms) ? "0" : Math.floor(ms / 1000).toString();
+  };
+
+  return isNumeric ? value : isNone ? "0" : parseIso();
+};
+
 const commitOutputToWitness = (input: ProveInput): Readonly<Record<string, unknown>> => {
   const co = input.commitOutput;
   const n = co.normalized;
@@ -110,8 +122,8 @@ const commitOutputToWitness = (input: ProveInput): Readonly<Record<string, unkno
     salt: co.salt,
     issuerSecretKey: input.issuerSecretKey,
     mac: input.mac,
-    issuedAt: n.lifecycle.issuedAt,
-    expiresAt: n.lifecycle.expiresAt,
+    issuedAt: toUnixSeconds(n.lifecycle.issuedAt),
+    expiresAt: toUnixSeconds(n.lifecycle.expiresAt),
     revoked: n.lifecycle.revoked === "true" ? "1" : "0",
     credentialCommitment: co.root,
     issuerPublicKey: input.issuerPublicKey,
