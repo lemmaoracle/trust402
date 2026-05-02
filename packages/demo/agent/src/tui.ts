@@ -1,14 +1,13 @@
 /**
  * TUI pacing primitives for interactive demo flow.
  *
- * - waitForKeypress: Pause until user presses any key
+ * - waitForKeypress: Pause until user presses Enter
  * - typewriter: Stream text one character at a time
  * - asyncSpinner: Show Braille spinner during async operations
  */
 
 import * as R from "ramda";
 import chalk from "chalk";
-import * as readline from "node:readline";
 
 // ── Braille spinner frames ────────────────────────────────────────────
 
@@ -36,16 +35,15 @@ const installSigintHandler = (): void => {
 export const waitForKeypress = async (prompt = "Press any key to continue"): Promise<void> => {
   installSigintHandler();
 
-  process.stdout.write(chalk.dim(`\n  ${prompt} — Press any key to continue`));
+  const { createInterface } = await import("node:readline");
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 
   await new Promise<void>((resolve) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-    rl.question("", () => {
+    rl.question(chalk.dim(`\n  ${prompt} — Press Enter to continue`), () => {
       rl.close();
-      process.stdout.write("\n");
       resolve();
     });
   });
