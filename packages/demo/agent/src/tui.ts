@@ -8,6 +8,7 @@
 
 import * as R from "ramda";
 import chalk from "chalk";
+import * as readline from "node:readline";
 
 // ── Braille spinner frames ────────────────────────────────────────────
 
@@ -19,18 +20,12 @@ const SPINNER_INTERVAL_MS = 80;
 
 // ── SIGINT handler ────────────────────────────────────────────────────
 
-const isRawModeSupported = (): boolean =>
-  typeof process.stdin.setRawMode === "function";
-
 let sigintHandlerInstalled = false;
 
 const installSigintHandler = (): void => {
   sigintHandlerInstalled
     ? undefined
     : (process.on("SIGINT", () => {
-        isRawModeSupported() && process.stdin.isRaw
-          ? process.stdin.setRawMode(false)
-          : undefined;
         process.stdout.write("\n");
         process.exit(130);
       }), sigintHandlerInstalled = true);
@@ -43,25 +38,16 @@ export const waitForKeypress = async (prompt = "Press any key to continue"): Pro
 
   process.stdout.write(chalk.dim(`\n  ${prompt} — Press any key to continue`));
 
-  const supportsRaw = isRawModeSupported();
-
-  supportsRaw
-    ? process.stdin.setRawMode(true)
-    : undefined;
-
-  process.stdin.resume();
-  process.stdin.setEncoding("utf8");
-
   await new Promise<void>((resolve) => {
-    const onData = (): void => {
-      supportsRaw
-        ? process.stdin.setRawMode(false)
-        : undefined;
-      process.stdin.removeListener("data", onData);
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    rl.question("", () => {
+      rl.close();
       process.stdout.write("\n");
       resolve();
-    };
-    process.stdin.once("data", onData);
+    });
   });
 };
 
