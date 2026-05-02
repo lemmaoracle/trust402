@@ -82,6 +82,7 @@ export const executeProofGatedPayment = async (
     return { data, success: ok };
   }).catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
+    console.error(chalk.red(`  Payment error detail: ${message}`));
     return {
       data: null,
       success: false,

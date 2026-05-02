@@ -150,11 +150,12 @@ export const queryDocumentRegistered = async (
   docHash: string,
 ): Promise<ReadonlyArray<BlockchainEvent>> => {
   const client = createViemClient(rpcUrl);
+  const normalizedDocHash = docHash.toLowerCase() as `0x${string}`;
 
   const logs = await client.getLogs({
     address: LEMMA_REGISTRY_ADDRESS,
     event: LEMMA_REGISTRY_ABI[0],
-    args: { docHash: docHash as `0x${string}` },
+    args: { docHash: normalizedDocHash },
     fromBlock: BigInt(0),
     toBlock: "latest",
   });
