@@ -12,10 +12,13 @@
   "devDependencies": {
     "@lemmaoracle/sdk": "^0.0.23",
     "@lemmaoracle/spec": "^0.0.22",
+    "@types/ramda": "^0.30.0",
     "dotenv": "^16.4.7",
     "ramda": "^0.30.0",
-    "@types/ramda": "^0.30.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "poseidon-lite": "^0.3.0"
   }
 }

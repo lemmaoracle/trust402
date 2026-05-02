@@ -9,7 +9,9 @@
  * 2. Encrypts the payload to obtain docHash and CID
  * 3. Normalizes and commits the data
  * 4. Registers the document with the Lemma oracle
- * 5. Writes the mapping to registered-docs.json
+ * 5. Generates ZK proof via prover.prove (Merkle inclusion)
+ * 6. Submits proof via proofs.submit
+ * 7. Writes the mapping to registered-docs.json
  *
  * Usage:
  *   tsx scripts/register-with-full-content.ts [reportId]
@@ -17,7 +19,7 @@
  *   tsx scripts/register-with-full-content.ts 2026q1   # register specific
  */
 
-import { create, define, schemas, prepare, encrypt, documents, proofs } from "@lemmaoracle/sdk";
+import { create, define, schemas, prepare, encrypt, documents, prover, proofs } from "@lemmaoracle/sdk";
 import type { LemmaClient } from "@lemmaoracle/spec";
 import * as R from "ramda";
 import * as dotenv from "dotenv";
@@ -32,6 +34,8 @@ dotenv.config({ path: path.join(DEMO_ROOT, "..", "..", ".env") });
 
 const LEMMA_API_KEY = process.env.LEMMA_API_KEY;
 const HOLDER_PRIVATE_KEY = process.env.HOLDER_PRIVATE_KEY ?? "";
+const CIRCUIT_ID = "financial-data-v1.8";
+const CHAIN_ID = 84532;
 
 // ── Hardcoded financial data ───────────────────────────────────────────
 
@@ -39,8 +43,8 @@ type FinancialReport = Readonly<{
   reportId: string;
   company: string;
   period: string;
-  revenue: number;
-  profit: number;
+  revenue: string;
+  profit: string;
 }>;
 
 const REPORTS: ReadonlyArray<FinancialReport> = [
@@ -48,8 +52,8 @@ const REPORTS: ReadonlyArray<FinancialReport> = [
     reportId: "2026q1",
     company: "Example Corp",
     period: "2026-Q1",
-    revenue: 1250000000,
-    profit: 340000000,
+    revenue: "$1.25B",
+    profit: "$340M",
   },
 ];
 
@@ -81,14 +85,14 @@ const registerReport = (
     reportId: report.reportId,
     company: report.company,
     period: report.period,
-    revenue: String(report.revenue),
-    profit: String(report.profit),
+    revenue: report.revenue,
+    profit: report.profit,
   };
 
   const holderPublicKey = derivePublicKey(HOLDER_PRIVATE_KEY);
 
   return schemas
-    .getById(client, "financial-data-v1")
+    .getById(client, CIRCUIT_ID)
     .then((schemaMeta) => define(schemaMeta))
     .then((schemaDef) =>
       Promise.all([
@@ -101,7 +105,7 @@ const registerReport = (
 
       return documents
         .register(client, {
-          schema: "financial-data-v1",
+          schema: CIRCUIT_ID,
           docHash: enc.docHash,
           cid: enc.cid,
           issuerId: "did:example:trust402-demo",
@@ -113,20 +117,62 @@ const registerReport = (
             leaves: prep.commitments.leaves,
             randomness: prep.commitments.randomness,
           },
+          chainId: CHAIN_ID,
           revocation: {
             type: "none" as const,
             root: "",
           },
         })
-        .then(() =>
-          proofs.submit(client, {
-            docHash: enc.docHash,
-            circuitId: "financial-data-v1",
-            proof: "",
-            inputs: [prep.commitments.root],
-          }),
-        )
         .then(() => {
+          console.log("  Document registered. Generating ZK proof...");
+
+          // Pick the first attribute for Merkle inclusion proof
+          const leafPreimages = prep.leafPreimages as ReadonlyArray<Readonly<{
+            name: string;
+            value: string | number;
+            nameHash: string;
+            valueHash: string;
+            blindingHash: string;
+          }>>;
+          const inclusionProofs = prep.inclusionProofs as ReadonlyArray<Readonly<{
+            siblings: ReadonlyArray<string>;
+            indices: ReadonlyArray<number>;
+          }>>;
+
+          const pre = leafPreimages[0];
+          const inclusionProof = inclusionProofs[0];
+
+          const CIRCUIT_DEPTH = 3;
+
+          const witness: Record<string, unknown> = {
+            commitmentRoot: BigInt(prep.commitments.root).toString(),
+            nameHash: BigInt(pre.nameHash).toString(),
+            valueHash: BigInt(pre.valueHash).toString(),
+            blinding: BigInt(prep.commitments.randomness).toString(),
+            pathElements: inclusionProof.siblings.map((s: string) => BigInt(s).toString()),
+            pathIndices: inclusionProof.indices,
+          };
+
+          console.log(`  Witness: commitmentRoot=${prep.commitments.root}, leaf="${pre.name}"`);
+
+          return prover.prove(client, {
+            circuitId: CIRCUIT_ID,
+            witness,
+          }).then((zkResult) => {
+            console.log(`  Proof generated (${typeof zkResult.proof === "string" ? zkResult.proof.substring(0, 20) + "..." : "object"})`);
+
+            return proofs.submit(client, {
+              docHash: enc.docHash,
+              circuitId: CIRCUIT_ID,
+              proof: zkResult.proof,
+              inputs: zkResult.inputs,
+              onchain: true,
+              chainId: CHAIN_ID,
+            });
+          });
+        })
+        .then((proofResult) => {
+          console.log(`  Proof submitted: ${proofResult.status ?? "ok"}`);
           console.log(`  docHash: ${enc.docHash}`);
           console.log(`  cid:     ${enc.cid}`);
           return { reportId: report.reportId, docHash: enc.docHash };

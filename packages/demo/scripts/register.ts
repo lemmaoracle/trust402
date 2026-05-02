@@ -5,7 +5,7 @@
  * This script:
  * 1. Uploads normalize WASM + JS to Pinata and calculates WASM hash
  * 2. Uploads circuit WASM + zkey to Pinata
- * 3. Registers the circuit schema (financial-data-v1) with IPFS artifact URLs
+ * 3. Registers the circuit schema (financial-data-v1.1) with IPFS artifact URLs
  * 4. Registers the circuit metadata with verifier information and IPFS artifact URLs
  *
  * Prerequisites:
@@ -37,8 +37,8 @@ const CHAIN_ID = Number(process.env.CHAIN_ID ?? 84532);
 
 // ── Constants ──────────────────────────────────────────────────────────
 
-const SCHEMA_ID = "financial-data-v1";
-const CIRCUIT_ID = "financial-data-v1";
+const SCHEMA_ID = "financial-data-v1.8";
+const CIRCUIT_ID = "financial-data-v1.8";
 
 // ── Validation ─────────────────────────────────────────────────────────
 
@@ -156,8 +156,8 @@ const buildSchemaMeta = (
         reportId: "string",
         company: "string",
         period: "string",
-        revenue: "integer",
-        profit: "integer",
+        revenue: "string",
+        profit: "string",
       },
       norm: {
         reportId: "field",
@@ -201,8 +201,8 @@ const buildCircuitMeta = (
   circuitId: CIRCUIT_ID,
   schema: SCHEMA_ID,
   description:
-    "Financial data attestation circuit — proves hash(fields) == claimedDocHash using Poseidon",
-  inputs: ["reportId", "company", "period", "revenue", "profit", "claimedDocHash"],
+    "Financial data Merkle inclusion circuit — proves attribute exists in commitment tree using Poseidon",
+  inputs: ["commitmentRoot", "nameHash", "valueHash", "blinding", "pathElements", "pathIndices"],
   verifiers: R.map(buildVerifier, networks),
   artifact: {
     location: {
