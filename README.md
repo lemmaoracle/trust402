@@ -5,15 +5,12 @@ ZK-proof-gated payments for autonomous AI agents. Trust402 combines zero-knowled
 ## How It Works
 
 ```text
-User Query → AI Reasoning → ZK Role Proof → x402 Payment → Verified Data
-                                  │
-                      ┌──────┴───────────┐
-                      │  Proof validates:            │
-                      │  • Agent role (e.g.          │
-                      │    "purchaser")              │
-                      │  • Spend limit ≤ gate        │
-                      │  • Credential valid          │
-                      └──────────────────┘
+User Query -> AI Reasoning -> ZK Role Proof -> x402 Payment -> Verified Data
+
+ZK Role Proof validates:
+  - Agent role (e.g. "purchaser")
+  - Spend limit <= gate ceiling
+  - Credential not expired / not revoked
 ```
 
 An agent holds a Verifiable Credential (committed on-chain via [Lemma](https://lemma.frame00.com/)). Before paying, it generates a Groth16 ZK proof that its role and spend limit satisfy the payment gate. The resource server verifies the proof before accepting payment — credentials never leave the agent.
