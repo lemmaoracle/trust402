@@ -19,6 +19,7 @@ export type EnvConfig = Readonly<{
   issuerId: string;
   holderPublicKey: string;
   baseSepoliaRpcUrl: string | undefined;
+  ethereumRpcUrl: string | undefined;
   keeperhubWebhookUrl: string | undefined;
   agentEnsName: string;
   issuerEnsName: string;
@@ -63,6 +64,7 @@ export const validateEnv = (): EnvConfig => {
     issuerId: process.env.ISSUER_ID ?? process.env.ISSUER_ENS_NAME ?? "issuer.trust402.eth",
     holderPublicKey: process.env.HOLDER_PUBLIC_KEY!,
     baseSepoliaRpcUrl: process.env.BASE_SEPOLIA_RPC_URL,
+    ethereumRpcUrl: process.env.ETHEREUM_RPC_URL,
     keeperhubWebhookUrl: process.env.KEEPERHUB_WEBHOOK_URL,
     agentEnsName: process.env.AGENT_ENS_NAME ?? "agent.trust402.eth",
     issuerEnsName: process.env.ISSUER_ENS_NAME ?? "issuer.trust402.eth",

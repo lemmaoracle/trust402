@@ -9,6 +9,10 @@ vi.mock("viem", () => ({
   http: vi.fn(() => "mocked-transport"),
 }));
 
+vi.mock("viem/chains", () => ({
+  mainnet: { id: 1, name: "Ethereum", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: ["https://eth.llamarpc.com"] } } },
+}));
+
 const baseEnv: EnvConfig = {
   resourceUrl: "http://localhost:3000",
   lemmaApiKey: "test-key",
@@ -20,6 +24,7 @@ const baseEnv: EnvConfig = {
   issuerId: "issuer.trust402.eth",
   holderPublicKey: "0xpub",
   baseSepoliaRpcUrl: "https://base-sepolia.example.com",
+  ethereumRpcUrl: undefined,
   keeperhubWebhookUrl: undefined,
   agentEnsName: "agent.trust402.eth",
   issuerEnsName: "issuer.trust402.eth",
@@ -61,18 +66,41 @@ describe("resolveEnsNames", () => {
     vi.clearAllMocks();
   });
 
-  it("skips resolution when baseSepoliaRpcUrl is undefined", async () => {
-    const env = { ...baseEnv, baseSepoliaRpcUrl: undefined };
+  it("uses public fallback RPC when ethereumRpcUrl is undefined", async () => {
+    const { createPublicClient } = await import("viem");
+    const agentAddr = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let callCount = 0;
+    const mockGetEnsAddress = vi.fn().mockImplementation(() => {
+      callCount++;
+      return callCount === 1 ? agentAddr : undefined;
+    });
+    (createPublicClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      getEnsAddress: mockGetEnsAddress,
+    });
+
+    const env = { ...baseEnv, ethereumRpcUrl: undefined };
     const result = await resolveEnsNames(env);
-    expect(result.resolvedAgentAddress).toBeUndefined();
-    expect(result.resolvedIssuerAddress).toBeUndefined();
+    expect(result.resolvedAgentAddress).toBe(agentAddr);
   });
 
-  it("skips resolution when baseSepoliaRpcUrl is empty", async () => {
-    const env = { ...baseEnv, baseSepoliaRpcUrl: "" };
+  it("uses custom ethereumRpcUrl when provided", async () => {
+    const { createPublicClient } = await import("viem");
+    const agentAddr = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const issuerAddr = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+    let callCount = 0;
+    const mockGetEnsAddress = vi.fn().mockImplementation(() => {
+      callCount++;
+      return callCount === 1 ? agentAddr : issuerAddr;
+    });
+    (createPublicClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      getEnsAddress: mockGetEnsAddress,
+    });
+
+    const env = { ...baseEnv, ethereumRpcUrl: "https://custom-rpc.example.com" };
     const result = await resolveEnsNames(env);
-    expect(result.resolvedAgentAddress).toBeUndefined();
-    expect(result.resolvedIssuerAddress).toBeUndefined();
+    expect(result.resolvedAgentAddress).toBe(agentAddr);
+    expect(result.resolvedIssuerAddress).toBe(issuerAddr);
   });
 
   it("resolves both agent and issuer ENS names", async () => {

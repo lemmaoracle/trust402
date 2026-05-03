@@ -12,6 +12,10 @@ vi.mock("viem", () => ({
   http: vi.fn(() => "mocked-transport"),
 }));
 
+vi.mock("viem/chains", () => ({
+  mainnet: { id: 1, name: "Ethereum", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: ["https://eth.llamarpc.com"] } } },
+}));
+
 beforeEach(() => {
   process.env.RESOURCE_URL = "http://localhost:3000";
   process.env.LEMMA_API_KEY = "test-api-key";

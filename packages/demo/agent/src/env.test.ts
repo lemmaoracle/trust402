@@ -70,4 +70,16 @@ describe("validateEnv", () => {
     const env = validateEnv();
     expect(env.baseSepoliaRpcUrl).toBe("https://base-sepolia.example.com");
   });
+
+  it("reads ETHEREUM_RPC_URL when set", () => {
+    process.env.ETHEREUM_RPC_URL = "https://ethereum.example.com";
+    const env = validateEnv();
+    expect(env.ethereumRpcUrl).toBe("https://ethereum.example.com");
+  });
+
+  it("returns undefined for ETHEREUM_RPC_URL when not set", () => {
+    delete process.env.ETHEREUM_RPC_URL;
+    const env = validateEnv();
+    expect(env.ethereumRpcUrl).toBeUndefined();
+  });
 });
