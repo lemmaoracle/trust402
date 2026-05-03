@@ -3,6 +3,11 @@ import type { PaymentGate } from "@trust402/roles";
 import type { IdentityArtifact, ProveRoleResult } from "./types.js";
 import { proveRoleFromArtifact } from "./prove-role-from-artifact.js";
 
+export type WrapFetchWithProofOptions = Readonly<{
+  chainId?: number;
+  onProofResult?: (result: ProveRoleResult) => void;
+}>;
+
 const proceedToFetch = (
   baseFetch: typeof fetch,
   input: RequestInfo | URL,
@@ -10,13 +15,22 @@ const proceedToFetch = (
   _result: ProveRoleResult,
 ): Promise<Response> => baseFetch(input, init);
 
+const invokeCallback = (
+  onProofResult: ((result: ProveRoleResult) => void) | undefined,
+  result: ProveRoleResult,
+): ProveRoleResult => {
+  onProofResult?.(result);
+  return result;
+};
+
 export const wrapFetchWithProof = (
   baseFetch: typeof fetch,
   artifact: IdentityArtifact,
   gate: PaymentGate,
   lemmaClient: LemmaClient,
-  options?: Readonly<{ chainId?: number }>,
+  options?: WrapFetchWithProofOptions,
 ): typeof fetch =>
   (input: RequestInfo | URL, init?: RequestInit) =>
     proveRoleFromArtifact(lemmaClient, artifact, gate, options)
+      .then((result) => invokeCallback(options?.onProofResult, result))
       .then((result) => proceedToFetch(baseFetch, input, init, result));

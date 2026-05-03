@@ -24,12 +24,28 @@ import { loadOrPromptArtifact } from "./artifact.js";
 import { executeProofGatedPayment, type ApiResponse } from "./payment.js";
 import { verifyAttestation, queryBlockchainEvents, type BlockchainEvent } from "./attestation.js";
 import { displaySummary } from "./summary.js";
-import { waitForKeypress, typewriter, asyncSpinner, displayPhaseBanner } from "./tui.js";
+import { waitForKeypress, asyncSpinner, displayPhaseBanner, printStateChange, serializeTruncated } from "./tui.js";
+import { witness } from "@trust402/roles";
+import type { PaymentGate } from "@trust402/roles";
+import type { ProveRoleResult } from "@trust402/protocol";
 
 config({ path: path.resolve(import.meta.dirname, "..", "..", "..", "..", ".env") });
 
 const formatUsd = (cents: number): string =>
   `$${(cents / 100).toFixed(2)}`;
+
+const buildPaymentGate = (maxSpend: number): PaymentGate => ({
+  role: "purchaser",
+  maxSpend,
+});
+
+const formatCondition = (maxSpend: number, price: string, ok: boolean): string =>
+  `^-role^:=^cpurchaser^:, ^-spendLimit^:=^c${formatUsd(maxSpend)}^:, ^-price^:=^g${price}^: → ${ok ? "^bOK" : "^rNG"}`;
+
+const formatWitness = (gate: PaymentGate, commitOutput: unknown): string =>
+  Object.entries(witness(gate, commitOutput as never))
+    .map(([key, value]) => `^-${key}^:: ${value}`)
+    .join("\n");
 
 const main = async (): Promise<void> => {
   // ── Phase 0: Resource startup note ──────────────────────────────
@@ -67,18 +83,29 @@ const main = async (): Promise<void> => {
 
   // ── Phase 5: First payment — successful $0.01 ──────────────────
   displayPhaseBanner("Phase 5: <TRUST402> Payment ($0.01)", "greenBright");
-  await waitForKeypress("Execute first payment");
 
   const url1 = `${env.resourceUrl}/ir/2026q1`;
-  const payment1Result = await executeProofGatedPayment(env, artifact, url1, "GET");
+  const gate1 = buildPaymentGate(env.maxSpend);
+  let proofResult1: ProveRoleResult | undefined;
+  const payment1Result = await executeProofGatedPayment(
+    env, artifact, url1, "GET",
+    (result) => { proofResult1 = result; },
+  );
+
+  const payment1Witness = formatWitness(gate1, artifact.commitOutput);
 
   if (payment1Result.success) {
     console.log(chalk.green("\n  ✓ First payment successful: $0.01 USDC for GET /ir/2026q1"));
     const data = payment1Result.data as ApiResponse | undefined;
-    if (data && typeof data === "object") {
-      const summaryJson = JSON.stringify(data, null, 2).split("\n").map(line => `    ${line}`).join("\n");
-      console.log(chalk.dim(`\n  Response Summary:\n${summaryJson}\n`));
-    }
+    const summaryJson = data && typeof data === "object"
+      ? JSON.stringify(data, null, 2)
+      : "-";
+    await printStateChange("Proof of Solvency Submitted, Payment Completed", [
+      { label: "Condition", value: formatCondition(env.maxSpend, "$0.01", true) },
+      { label: "Witness", value: payment1Witness },
+      { label: "Proof", value: serializeTruncated(proofResult1?.roleProof) },
+      { label: "Content", value: summaryJson },
+    ]);
   } else {
     console.log(chalk.red(`\n  ✗ First payment failed: ${payment1Result.error ?? "unknown error"}\n`));
   }
@@ -96,20 +123,28 @@ const main = async (): Promise<void> => {
 
   // ── Phase 7: Second payment — budget enforcement ───────────────
   displayPhaseBanner("Phase 7: <TRUST402> Budget Enforcement ($500)", "greenBright");
+  await waitForKeypress("Continue to query");
 
   console.log("  Agent signs the corporate contract — a $500 purchase...");
   await displayQuery(2);
   await runReasoningSimulation(2);
-  await waitForKeypress("Attempt second payment");
 
   const url2 = `${env.resourceUrl}/contract`;
+  const gate2 = buildPaymentGate(env.maxSpend);
   const payment2Result = await executeProofGatedPayment(env, artifact, url2, "POST");
 
-  payment2Result.success
-    ? console.log(chalk.yellow(`\n  ⚠️  Second payment succeeded unexpectedly — budget not enforced. MAX_SPEND may be too high.\n`))
-    : console.log(chalk.green(`\n  🛡️  Second payment rejected: Budget exceeded: `)+chalk.bgRed.white(`$500.00 > ${formatUsd(env.maxSpend)} spend limit\n`));
+  const payment2Witness = formatWitness(gate2, artifact.commitOutput);
 
-  await waitForKeypress("Continue to transaction summary");
+  payment2Result.success
+    ? (console.log(chalk.yellow(`\n  ⚠️  Second payment succeeded unexpectedly — budget not enforced. MAX_SPEND may be too high.\n`)),
+       await waitForKeypress("Continue to transaction summary"))
+    : (console.log(chalk.green(`\n  🛡️  Second payment rejected: Budget exceeded: `)+chalk.bgRed.white(`$500.00 > ${formatUsd(env.maxSpend)} spend limit\n`)),
+       await printStateChange("Proof Invalid, Payment Rejected", [
+         { label: "Condition", value: formatCondition(env.maxSpend, "$500.00", false) },
+         { label: "Witness", value: payment2Witness },
+         { label: "Proof", value: "^rFailed^: (✓ Expected)" },
+         { label: "Content", value: "-" },
+       ]));
 
   // ── Phase 8: Proof summary with blockchain events ───────────────
   displayPhaseBanner("Phase 8: Transaction Summary", "green");

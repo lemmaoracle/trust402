@@ -16,7 +16,7 @@ import { wrapFetchWithPayment } from "@x402/fetch";
 import { x402Client } from "@x402/core/client";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { wrapFetchWithProof } from "@trust402/protocol";
-import type { IdentityArtifact } from "@trust402/protocol";
+import type { IdentityArtifact, ProveRoleResult, WrapFetchWithProofOptions } from "@trust402/protocol";
 import type { PaymentGate } from "@trust402/roles";
 import type { EnvConfig } from "./env.js";
 import { asyncSpinner } from "./tui.js";
@@ -90,8 +90,9 @@ const composeFetchPipeline = (
   gate: PaymentGate,
   lemmaClient: LemmaClient,
   env: EnvConfig,
+  proofOptions?: WrapFetchWithProofOptions,
 ): typeof fetch => {
-  const proofFetch = wrapFetchWithProof(fetch, artifact, gate, lemmaClient);
+  const proofFetch = wrapFetchWithProof(fetch, artifact, gate, lemmaClient, proofOptions);
 
   const account = privateKeyToAccount(env.agentPrivateKey as `0x${string}`);
   const client = new x402Client();
@@ -109,6 +110,7 @@ export const executeProofGatedPayment = async (
   artifact: IdentityArtifact,
   url: string,
   method: string,
+  onProofResult?: (result: ProveRoleResult) => void,
 ): Promise<PaymentResult> => {
   const lemmaClient = createLemmaClient(env);
   const gate = buildPaymentGate(env.maxSpend);
@@ -116,7 +118,10 @@ export const executeProofGatedPayment = async (
   console.log(chalk.cyan(`\n💳 Executing proof-gated payment: ${method} ${url}`));
   console.log(`   Gate: role=${gate.role}, maxSpend=${gate.maxSpend}\n`);
 
-  const paymentFetch = composeFetchPipeline(artifact, gate, lemmaClient, env);
+  const proofOptions: WrapFetchWithProofOptions | undefined = onProofResult
+    ? { onProofResult }
+    : undefined;
+  const paymentFetch = composeFetchPipeline(artifact, gate, lemmaClient, env, proofOptions);
 
   const spinnerLabel = `Generating role proof and executing ${method} ${url}...`;
 

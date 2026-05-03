@@ -262,8 +262,7 @@ export const queryBlockchainEvents = async (
     : undefined;
 
   const fetchEvents = async (url: string): Promise<ReadonlyArray<BlockchainEvent>> => {
-    const registered = await queryDocumentRegistered(url, docHash);
-    const settled = await queryProofSettled(url, docHash);
+    const [registered, settled] = await Promise.all([queryDocumentRegistered(url, docHash), queryProofSettled(url, docHash)]);
     return [...registered, ...settled];
   };
 

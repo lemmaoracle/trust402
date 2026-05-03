@@ -63,7 +63,7 @@ const displayFailedPayment = (env: EnvConfig): void => {
   console.log(`  Amount:   $500.00 USDC`);
   console.log(`  Method:   POST /contract`);
   console.log(`  Network:  Base Sepolia (eip155:84532)`);
-  console.log(`  Status:   ${chalk.bgRed.white.bold(" ✗ Rejected ")}`);
+  console.log(`  Status:   ${chalk.bgRed.white.bold(" ✗ Rejected ")} (✓ Expected)`);
   console.log(`  Reason:   Budget exceeded: $500.00 > ${formatUsd(env.maxSpend)} spend limit`);
   console.log(chalk.bgGreen.black.bold(`  ✓ Budget enforcement working — payment blocked by role-spend-limit-v1 proof  `));
 };
@@ -103,13 +103,13 @@ export const displaySummary = async (
   console.log(chalk.bold.green("╚══════════════════════════════════════════╝"));
 
   displayProofSummary();
-  displayAttestationSummary(attestationResult, env);
 
+  displaySuccessfulPayment();
   payment1Result.success && !R.isNil(data)
     ? displayFinancialData(data)
     : undefined;
+  displayAttestationSummary(attestationResult, env);
 
-  displaySuccessfulPayment();
   displayFailedPayment(env);
 
   await displayBlockchainEventSection(blockchainEvents);

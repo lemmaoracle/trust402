@@ -14,7 +14,7 @@ import type { ProveOutput } from "@lemmaoracle/sdk";
 import type { IdentityArtifact } from "@trust402/protocol";
 import type { AgentCredential } from "@trust402/identity";
 import type { EnvConfig } from "./env.js";
-import { waitForKeypress } from "./tui.js";
+import { printStateChange, serializeTruncated } from "./tui.js";
 import { poseidon1, poseidon2 } from "poseidon-lite";
 
 const SCHEMA_ID = "agent-identity-authority-v1";
@@ -178,11 +178,14 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
   // ── Step 4: Submit (publish proof to oracle) ──────────────────────
   const hasProof = proofResult.proof !== "";
   hasProof
-    ? (console.log(chalk.cyan("    Submitting proof to oracle...")),
-       await submitIdentity(client, registerResult.docHash, proofResult).catch((err: unknown) => {
-         console.log(chalk.yellow(`    ⚠ Oracle submission failed: ${err instanceof Error ? err.message : String(err)}`));
-       }))
-    : console.log(chalk.yellow("    ⚠ Skipping oracle submission — no proof generated."));
+    ? console.log(chalk.cyan("    Submitting proof to oracle..."))
+    : undefined;
+  const submitResult = hasProof
+    ? await submitIdentity(client, registerResult.docHash, proofResult).catch((err: unknown) => {
+        console.log(chalk.yellow(`    ⚠ Oracle submission failed: ${err instanceof Error ? err.message : String(err)}`));
+        return undefined;
+      })
+    : (console.log(chalk.yellow("    ⚠ Skipping oracle submission — no proof generated.")), undefined);
 
   const artifact: IdentityArtifact = {
     commitOutput: registerResult.commitOutput,
@@ -193,6 +196,15 @@ const generateArtifact = async (env: EnvConfig): Promise<IdentityArtifact> => {
 
   saveArtifact(env.artifactPath, artifact);
   console.log(chalk.green(`    ✓ Artifact saved to ${env.artifactPath}`));
+
+  const proofDisplayValue = proofResult.proof !== ""
+    ? `${serializeTruncated(proofResult)}\n${serializeTruncated(submitResult)}`
+    : "⚠ Partial — proof generation failed";
+  await printStateChange("Agent Identity Completed", [
+    { label: "Credential", value: serializeTruncated(cred) },
+    { label: "Encrypted Cred", value: serializeTruncated(registerResult) },
+    { label: "Credential Proof", value: proofDisplayValue },
+  ]);
 
   return artifact;
 };
@@ -227,7 +239,6 @@ export const loadOrPromptArtifact = async (env: EnvConfig): Promise<IdentityArti
   const loadedArtifact = R.isNil(artifact) ? await handleMissing() : artifact;
 
   displayBudgetTable(env);
-  await waitForKeypress("Continue to query");
 
   return loadedArtifact;
 };
