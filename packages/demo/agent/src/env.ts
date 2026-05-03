@@ -21,6 +21,7 @@ export type EnvConfig = Readonly<{
   baseSepoliaRpcUrl: string | undefined;
   ethereumRpcUrl: string | undefined;
   keeperhubWebhookUrl: string | undefined;
+  keeperhubApiKey: string | undefined;
   agentEnsName: string;
   issuerEnsName: string;
   resolvedAgentAddress: string | undefined;
@@ -66,6 +67,7 @@ export const validateEnv = (): EnvConfig => {
     baseSepoliaRpcUrl: process.env.BASE_SEPOLIA_RPC_URL,
     ethereumRpcUrl: process.env.ETHEREUM_RPC_URL,
     keeperhubWebhookUrl: process.env.KEEPERHUB_WEBHOOK_URL,
+    keeperhubApiKey: process.env.KEEPERHUB_API_KEY,
     agentEnsName: process.env.AGENT_ENS_NAME ?? "agent.trust402.eth",
     issuerEnsName: process.env.ISSUER_ENS_NAME ?? "issuer.trust402.eth",
     resolvedAgentAddress: undefined,

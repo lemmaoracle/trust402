@@ -25,11 +25,15 @@ const createSpendLimitExceededPayload = (
 const postWebhook = async (
   webhookUrl: string,
   payload: KeeperHubEvent,
+  apiKey?: string,
 ): Promise<void> => {
   try {
     await fetch(webhookUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiKey ? { "Authorization": `Bearer ${apiKey}` } : {}),
+      },
       body: JSON.stringify(payload),
     });
   } catch {
@@ -44,17 +48,19 @@ const postWebhook = async (
  * @param agentId - The agent identifier that exceeded the spend limit.
  * @param spendLimit - The configured spend limit.
  * @param attempted - The attempted spend amount that exceeded the limit.
+ * @param apiKey - Optional KeeperHub API key for Authorization header.
  */
 export const notifyKeeperHub = (
   webhookUrl: string | undefined,
   agentId: string,
   spendLimit: number,
   attempted: number,
+  apiKey?: string,
 ): Promise<void> => {
   if (!isNonEmptyString(webhookUrl)) {
     return Promise.resolve();
   }
 
   const payload = createSpendLimitExceededPayload(agentId, spendLimit, attempted);
-  return postWebhook(webhookUrl, payload);
+  return postWebhook(webhookUrl, payload, apiKey);
 };

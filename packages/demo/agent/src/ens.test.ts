@@ -26,6 +26,7 @@ const baseEnv: EnvConfig = {
   baseSepoliaRpcUrl: "https://base-sepolia.example.com",
   ethereumRpcUrl: undefined,
   keeperhubWebhookUrl: undefined,
+  keeperhubApiKey: undefined,
   agentEnsName: "agent.trust402.eth",
   issuerEnsName: "issuer.trust402.eth",
   resolvedAgentAddress: undefined,

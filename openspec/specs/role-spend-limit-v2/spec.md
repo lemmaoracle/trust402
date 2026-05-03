@@ -1,5 +1,3 @@
-## ADDED Requirements
-
 ### Requirement: Role-spend-limit-v2 Groth16 circuit
 
 The system SHALL provide a Groth16 circuit (`role-spend-limit-v2`) that proves an agent holds a required role AND has a spend limit within a payment gate ceiling, using a separate `roleGateCommitment` binding and cross-proof correlation via public `credentialCommitment`.
@@ -174,3 +172,31 @@ The system SHALL provide an updated preset manifest (`role-spend-limit-v2.json`)
 
 - **WHEN** the preset manifest is loaded
 - **THEN** it contains `circuitId: "role-spend-limit-v2"`, `inputs: ["requiredRoleHash", "maxSpend", "nowSec", "roleGateCommitment", "credentialCommitmentPublic"]`, and updated artifact locations
+
+### Requirement: Spend limit exceeded notification on proof failure
+
+The system SHALL notify KeeperHub when a role proof fails due to spend limit exceeding the gate ceiling.
+
+#### Scenario: Notification triggered on spend limit exceeded
+- **WHEN** `proveRoleFromArtifact` fails because `spendLimit > maxSpend` in the role-spend-limit-v2 circuit
+- **THEN** `notifyKeeperHub` is called with event type `spend_limit_exceeded`, the agent ID, the configured spend limit, and the attempted spend amount
+
+#### Scenario: Notification not triggered on other proof failures
+- **WHEN** `proveRoleFromArtifact` fails for reasons other than spend limit (e.g., wrong role, expired artifact, network error)
+- **THEN** `notifyKeeperHub` is NOT called
+
+#### Scenario: Notification failure does not affect proof error propagation
+- **WHEN** `notifyKeeperHub` is called but the webhook request fails
+- **THEN** the original proof failure error is still propagated to the caller
+
+### Requirement: Webhook URL configuration in wrapFetchWithProof
+
+The system SHALL accept an optional `webhookUrl` option in `wrapFetchWithProof` for KeeperHub notifications.
+
+#### Scenario: Webhook URL provided
+- **WHEN** `wrapFetchWithProof` is called with `options.webhookUrl` set
+- **THEN** the URL is passed to `proveRoleFromArtifact` for potential notification use
+
+#### Scenario: Webhook URL not provided
+- **WHEN** `wrapFetchWithProof` is called without `options.webhookUrl`
+- **THEN** no notification is attempted on proof failure

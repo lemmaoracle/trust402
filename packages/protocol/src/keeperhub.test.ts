@@ -49,10 +49,34 @@ describe("notifyKeeperHub", () => {
     expect(typeof body.timestamp).toBe("number");
   });
 
+  it("should include Authorization header when apiKey is provided", async () => {
+    const webhookUrl = "https://app.keeperhub.com/api/integrations/webhook/test-id";
+
+    await notifyKeeperHub(webhookUrl, "agent-1", 1000, 2000, "kh-secret-key");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      webhookUrl,
+      expect.objectContaining({
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer kh-secret-key",
+        },
+      }),
+    );
+  });
+
+  it("should not include Authorization header when apiKey is undefined", async () => {
+    const webhookUrl = "https://app.keeperhub.com/api/integrations/webhook/test-id";
+
+    await notifyKeeperHub(webhookUrl, "agent-1", 1000, 2000);
+
+    const call = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[1].headers).not.toHaveProperty("Authorization");
+  });
+
   it("should silently ignore network errors", async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
 
-    // Should not throw
     await expect(
       notifyKeeperHub("https://example.com/webhook", "agent-1", 1000, 2000),
     ).resolves.toBeUndefined();
@@ -61,7 +85,6 @@ describe("notifyKeeperHub", () => {
   it("should silently ignore 4xx/5xx responses", async () => {
     global.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 500 }));
 
-    // Should not throw
     await expect(
       notifyKeeperHub("https://example.com/webhook", "agent-1", 1000, 2000),
     ).resolves.toBeUndefined();
