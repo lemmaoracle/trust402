@@ -29,7 +29,7 @@
 ## 5. Attestation Verification
 
 - [x] 5.1 Update `verifyAttestation` call in `cli.ts` to only run on the first payment's response (second payment has no data to verify) [US3]
-- [ ] 5.2 Add typewriter display for the attestation verification result text: "Attestation verified — this financial data is certified" [US3] [P]
+- [x] 5.2 Add typewriter display for the attestation verification result text: "Attestation verified — this financial data is certified" [US3] [P]
 
 ## 6. Blockchain Event Log Display
 
