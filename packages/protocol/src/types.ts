@@ -32,3 +32,15 @@ export type ProveRoleResult = Readonly<{
   identitySubmission: unknown;
   roleSubmission: unknown;
 }>;
+
+// ── KeeperHub Types ───────────────────────────────────────────────────
+
+export type SpendLimitExceededEvent = Readonly<{
+  event: "spend_limit_exceeded";
+  agentId: string;
+  spendLimit: number;
+  attempted: number;
+  timestamp: number;
+}>;
+
+export type KeeperHubEvent = SpendLimitExceededEvent;

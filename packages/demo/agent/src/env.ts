@@ -19,6 +19,7 @@ export type EnvConfig = Readonly<{
   issuerId: string;
   holderPublicKey: string;
   baseSepoliaRpcUrl: string | undefined;
+  keeperhubWebhookUrl: string | undefined;
 }>;
 
 const REQUIRED_VARS: ReadonlyArray<RequiredVar> = [
@@ -58,5 +59,6 @@ export const validateEnv = (): EnvConfig => {
     issuerId: process.env.ISSUER_ID ?? "did:trust402:demo-issuer",
     holderPublicKey: process.env.HOLDER_PUBLIC_KEY!,
     baseSepoliaRpcUrl: process.env.BASE_SEPOLIA_RPC_URL,
+    keeperhubWebhookUrl: process.env.KEEPERHUB_WEBHOOK_URL,
   };
 };

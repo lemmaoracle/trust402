@@ -6,6 +6,8 @@ import { proveRoleFromArtifact } from "./prove-role-from-artifact.js";
 export type WrapFetchWithProofOptions = Readonly<{
   chainId?: number;
   onProofResult?: (result: ProveRoleResult) => void;
+  webhookUrl?: string;
+  agentId?: string;
 }>;
 
 const proceedToFetch = (

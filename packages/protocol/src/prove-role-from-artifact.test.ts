@@ -99,6 +99,7 @@ const mockRoleWitness = vi.fn().mockReturnValue({
 const mockRoleProve = vi.fn().mockResolvedValue(mockRoleProof);
 const mockRoleSubmit = vi.fn().mockResolvedValue(mockSubmission);
 const mockIdentitySubmit = vi.fn().mockResolvedValue(mockSubmission);
+const mockNotifyKeeperHub = vi.fn();
 
 vi.mock("@trust402/identity", () => ({
   register: vi.fn(),
@@ -123,6 +124,10 @@ vi.mock("@lemmaoracle/agent", () => ({
   computeCredentialCommitment: vi.fn(),
 }));
 
+vi.mock("./keeperhub.js", () => ({
+  notifyKeeperHub: mockNotifyKeeperHub,
+}));
+
 // ── Tests ─────────────────────────────────────────────────────────────
 
 describe("proveRoleFromArtifact", () => {
@@ -131,6 +136,7 @@ describe("proveRoleFromArtifact", () => {
     mockRoleProve.mockClear();
     mockRoleSubmit.mockClear();
     mockIdentitySubmit.mockClear();
+    mockNotifyKeeperHub.mockClear();
 
     mockRoleWitness.mockReturnValue({
       credentialCommitment: mockCommitOutput.root,
@@ -155,8 +161,8 @@ describe("proveRoleFromArtifact", () => {
 
     expect(mockRoleWitness).toHaveBeenCalledWith(sampleGate, mockCommitOutput);
     expect(mockRoleProve).toHaveBeenCalled();
-    expect(mockIdentitySubmit).toHaveBeenCalledWith(mockClient, sampleArtifact.docHash, mockIdentityProof);
-    expect(mockRoleSubmit).toHaveBeenCalledWith(mockClient, sampleArtifact.docHash, mockRoleProof);
+    expect(mockIdentitySubmit).toHaveBeenCalledWith(mockClient, sampleArtifact.docHash, mockIdentityProof, undefined);
+    expect(mockRoleSubmit).toHaveBeenCalledWith(mockClient, sampleArtifact.docHash, mockRoleProof, undefined);
 
     expect(result.identityProof).toEqual(mockIdentityProof);
     expect(result.roleProof).toEqual(mockRoleProof);
@@ -179,7 +185,7 @@ describe("proveRoleFromArtifact", () => {
 
     await proveRoleFromArtifact(mockClient, sampleArtifact, sampleGate);
 
-    expect(mockIdentitySubmit).toHaveBeenCalledWith(mockClient, sampleArtifact.docHash, mockIdentityProof);
+    expect(mockIdentitySubmit).toHaveBeenCalledWith(mockClient, sampleArtifact.docHash, mockIdentityProof, undefined);
   });
 
   it("rejects with error when role proof generation fails", async () => {
@@ -193,7 +199,6 @@ describe("proveRoleFromArtifact", () => {
   });
 
   it("proceeds when oracle submission fails (non-fatal) and sets submission to undefined", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     mockIdentitySubmit.mockRejectedValue(new Error("Network error"));
     mockRoleSubmit.mockRejectedValue(new Error("Network error"));
 
@@ -205,8 +210,37 @@ describe("proveRoleFromArtifact", () => {
     expect(result.roleProof).toEqual(mockRoleProof);
     expect(result.identitySubmission).toBeUndefined();
     expect(result.roleSubmission).toBeUndefined();
-    expect(warnSpy).toHaveBeenCalled();
+  });
 
-    warnSpy.mockRestore();
+  it("calls notifyKeeperHub when spend limit exceeded error occurs with webhook configured", async () => {
+    const error = new Error("Constraint failed: spend limit exceeded");
+    mockRoleProve.mockRejectedValue(error);
+
+    const { proveRoleFromArtifact } = await import("./prove-role-from-artifact.js");
+
+    const webhookUrl = "https://example.com/webhook";
+    const agentId = "agent-123";
+
+    await expect(
+      proveRoleFromArtifact(mockClient, sampleArtifact, sampleGate, { webhookUrl, agentId }),
+    ).rejects.toThrow("Role proof generation failed");
+
+    expect(mockNotifyKeeperHub).toHaveBeenCalledWith(webhookUrl, agentId, sampleGate.maxSpend, sampleGate.maxSpend);
+  });
+
+  it("does not call notifyKeeperHub when error is not spend limit related", async () => {
+    const error = new Error("Network timeout");
+    mockRoleProve.mockRejectedValue(error);
+
+    const { proveRoleFromArtifact } = await import("./prove-role-from-artifact.js");
+
+    const webhookUrl = "https://example.com/webhook";
+    const agentId = "agent-123";
+
+    await expect(
+      proveRoleFromArtifact(mockClient, sampleArtifact, sampleGate, { webhookUrl, agentId }),
+    ).rejects.toThrow("Role proof generation failed");
+
+    expect(mockNotifyKeeperHub).not.toHaveBeenCalled();
   });
 });

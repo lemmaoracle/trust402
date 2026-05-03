@@ -118,9 +118,11 @@ export const executeProofGatedPayment = async (
   console.log(chalk.cyan(`\n💳 Executing proof-gated payment: ${method} ${url}`));
   console.log(`   Gate: role=${gate.role}, maxSpend=${gate.maxSpend}\n`);
 
-  const proofOptions: WrapFetchWithProofOptions | undefined = onProofResult
-    ? { onProofResult }
-    : undefined;
+  const proofOptions: WrapFetchWithProofOptions = {
+    onProofResult,
+    webhookUrl: env.keeperhubWebhookUrl,
+    agentId: env.agentId,
+  };
   const paymentFetch = composeFetchPipeline(artifact, gate, lemmaClient, env, proofOptions);
 
   const spinnerLabel = `Generating role proof and executing ${method} ${url}...`;
