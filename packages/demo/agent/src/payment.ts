@@ -50,7 +50,7 @@ type PaymentRequiredResponse = Readonly<{
   x402Version: number;
   error?: string;
   resource?: Readonly<{ url: string }>;
-  accepts?: ReadonlyArray<Readonly<{ payTo?: string }>>;
+  accepts?: ReadonlyArray<Readonly<{ payTo?: string; price?: string }>>;
 }>;
 
 const X402_ERROR_MESSAGES: Readonly<Record<string, string>> = {
@@ -110,6 +110,7 @@ export const executeProofGatedPayment = async (
   artifact: IdentityArtifact,
   url: string,
   method: string,
+  attemptedSpend?: number,
   onProofResult?: (result: ProveRoleResult) => void,
 ): Promise<PaymentResult> => {
   const lemmaClient = createLemmaClient(env);
@@ -121,7 +122,9 @@ export const executeProofGatedPayment = async (
   const proofOptions: WrapFetchWithProofOptions = {
     onProofResult,
     webhookUrl: env.keeperhubWebhookUrl,
+    webhookApiKey: env.keeperhubApiKey,
     agentId: env.agentId,
+    attemptedSpend,
   };
   const paymentFetch = composeFetchPipeline(artifact, gate, lemmaClient, env, proofOptions);
 

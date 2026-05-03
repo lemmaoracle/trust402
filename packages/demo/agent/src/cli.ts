@@ -96,6 +96,7 @@ const main = async (): Promise<void> => {
   let proofResult1: ProveRoleResult | undefined;
   const payment1Result = await executeProofGatedPayment(
     env, artifact, url1, "GET",
+    undefined,
     (result) => { proofResult1 = result; },
   );
 
@@ -138,7 +139,7 @@ const main = async (): Promise<void> => {
 
   const url2 = `${env.resourceUrl}/contract`;
   const gate2 = buildPaymentGate(env.maxSpend);
-  const payment2Result = await executeProofGatedPayment(env, artifact, url2, "POST");
+  const payment2Result = await executeProofGatedPayment(env, artifact, url2, "POST", 50000);
 
   const payment2Witness = formatWitness(gate2, artifact.commitOutput);
 

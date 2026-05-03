@@ -7,7 +7,9 @@ export type WrapFetchWithProofOptions = Readonly<{
   chainId?: number;
   onProofResult?: (result: ProveRoleResult) => void;
   webhookUrl?: string;
+  webhookApiKey?: string;
   agentId?: string;
+  attemptedSpend?: number;
 }>;
 
 const proceedToFetch = (

@@ -225,7 +225,50 @@ describe("proveRoleFromArtifact", () => {
       proveRoleFromArtifact(mockClient, sampleArtifact, sampleGate, { webhookUrl, agentId }),
     ).rejects.toThrow("Role proof generation failed");
 
-    expect(mockNotifyKeeperHub).toHaveBeenCalledWith(webhookUrl, agentId, sampleGate.maxSpend, sampleGate.maxSpend);
+    expect(mockNotifyKeeperHub).toHaveBeenCalledWith(webhookUrl, agentId, sampleGate.maxSpend, sampleGate.maxSpend, undefined);
+  });
+
+  it("calls notifyKeeperHub with attemptedSpend when provided", async () => {
+    const error = new Error("Constraint failed: spend limit exceeded");
+    mockRoleProve.mockRejectedValue(error);
+
+    const { proveRoleFromArtifact } = await import("./prove-role-from-artifact.js");
+
+    const webhookUrl = "https://example.com/webhook";
+    const agentId = "agent-123";
+    const attemptedSpend = 50000;
+
+    await expect(
+      proveRoleFromArtifact(mockClient, sampleArtifact, sampleGate, { webhookUrl, agentId, attemptedSpend }),
+    ).rejects.toThrow("Role proof generation failed");
+
+    expect(mockNotifyKeeperHub).toHaveBeenCalledWith(webhookUrl, agentId, sampleGate.maxSpend, attemptedSpend, undefined);
+  });
+
+  it("passes overridden spendLimit to witness when attemptedSpend is provided", async () => {
+    const { proveRoleFromArtifact } = await import("./prove-role-from-artifact.js");
+
+    await proveRoleFromArtifact(mockClient, sampleArtifact, sampleGate, { attemptedSpend: 50000 });
+
+    const calledWithCommitOutput = mockRoleWitness.mock.calls[0][1] as CommitOutput;
+    expect(calledWithCommitOutput.normalized.financial.spendLimit).toBe("50000");
+  });
+
+  it("calls notifyKeeperHub with apiKey when webhookApiKey is provided", async () => {
+    const error = new Error("Constraint failed: spend limit exceeded");
+    mockRoleProve.mockRejectedValue(error);
+
+    const { proveRoleFromArtifact } = await import("./prove-role-from-artifact.js");
+
+    const webhookUrl = "https://example.com/webhook";
+    const webhookApiKey = "kh-secret-key";
+    const agentId = "agent-123";
+
+    await expect(
+      proveRoleFromArtifact(mockClient, sampleArtifact, sampleGate, { webhookUrl, webhookApiKey, agentId }),
+    ).rejects.toThrow("Role proof generation failed");
+
+    expect(mockNotifyKeeperHub).toHaveBeenCalledWith(webhookUrl, agentId, sampleGate.maxSpend, sampleGate.maxSpend, webhookApiKey);
   });
 
   it("does not call notifyKeeperHub when error is not spend limit related", async () => {

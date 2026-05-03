@@ -31,10 +31,30 @@ const isSpendLimitExceededError = (err: unknown): boolean => {
 const rejectRoleFailure = (_err: unknown): Promise<never> =>
   Promise.reject(new Error("Role proof generation failed"));
 
+const overrideSpendLimit = (
+  commitOutput: CommitOutput,
+  attemptedSpend: number | undefined,
+): CommitOutput => {
+  if (attemptedSpend === undefined) return commitOutput;
+
+  return {
+    ...commitOutput,
+    normalized: {
+      ...commitOutput.normalized,
+      financial: {
+        ...commitOutput.normalized.financial,
+        spendLimit: attemptedSpend.toString(),
+      },
+    },
+  };
+};
+
 export type ProveRoleFromArtifactOptions = Readonly<{
   chainId?: number;
   webhookUrl?: string;
+  webhookApiKey?: string;
   agentId?: string;
+  attemptedSpend?: number;
 }>;
 
 export const proveRoleFromArtifact = (
@@ -43,17 +63,19 @@ export const proveRoleFromArtifact = (
   gate: PaymentGate,
   options?: ProveRoleFromArtifactOptions,
 ): Promise<ProveRoleResult> => {
-  const commitOutput: CommitOutput = artifact.commitOutput;
+  const commitOutput = overrideSpendLimit(artifact.commitOutput, options?.attemptedSpend);
   const docHash: string = artifact.docHash;
   const circuitWitness = witness(gate, commitOutput);
   const chainId = options?.chainId;
   const webhookUrl = options?.webhookUrl;
+  const webhookApiKey = options?.webhookApiKey;
   const agentId = options?.agentId;
+  const attemptedSpend = options?.attemptedSpend;
 
   return proveRole(client, circuitWitness)
     .catch((err: unknown) => {
       if (isSpendLimitExceededError(err) && webhookUrl && agentId) {
-        notifyKeeperHub(webhookUrl, agentId, gate.maxSpend, gate.maxSpend);
+        notifyKeeperHub(webhookUrl, agentId, gate.maxSpend, attemptedSpend ?? gate.maxSpend, webhookApiKey);
       }
       return rejectRoleFailure(err);
     })
