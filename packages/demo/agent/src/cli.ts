@@ -17,6 +17,7 @@
 import { config } from "dotenv";
 import * as path from "node:path";
 import chalk from "chalk";
+import figlet from "figlet";
 import { validateEnv } from "./env.js";
 import { displaySkillSummary } from "./skill-loader.js";
 import { displayQuery, runReasoningSimulation } from "./reasoning.js";
@@ -49,13 +50,15 @@ const formatWitness = (gate: PaymentGate, commitOutput: unknown): string =>
 
 const main = async (): Promise<void> => {
   // ── Phase 0: Resource startup note ──────────────────────────────
-  console.log(chalk.bold.blue("\n🤖 Trust402 Demo Agent\n"));
-  console.log("  This demo simulates an AI agent paying for verified financial data using ZK proofs and the x402 protocol.");
+  const banner = figlet.textSync("Trust402", { font: "5 Line Oblique" });
+  console.log(chalk.bold.cyan(banner));
+  console.log(chalk.dim("  AI agent demo — zk-proven payments for verified data via x402\n"));
 
   // ── Validate environment ────────────────────────────────────────
   const env = validateEnv();
 
   console.log(chalk.dim(`\n  Resource server: ${env.resourceUrl}`));
+  await waitForKeypress("Continue to agent startup");
 
   // ── Phase 1: Agent startup with SKILL.md ───────────────────────
   displayPhaseBanner("Phase 1: Agent Startup", "cyan");
