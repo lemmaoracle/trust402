@@ -85,12 +85,16 @@ const offerAutoGenerate = async (env: EnvConfig): Promise<boolean> => {
 };
 
 const createTestCredential = (env: EnvConfig): AgentCredential => {
+  const formatUsd = (cents: number): string =>
+    `$${(cents / 100).toFixed(2)}`;
+
   const result = credential({
     agentId: env.agentId,
     subjectId: env.agentId,
     roles: ["purchaser"],
     issuerId: env.issuerId,
     spendLimit: env.maxSpend,
+    paymentPolicy: `auto-approve-below-limit (${env.maxSpend} = ${formatUsd(env.maxSpend)})`,
   });
 
   return result.valid
