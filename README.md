@@ -1,6 +1,6 @@
 # Trust402
 
-> x402 trust layer. Give AI agents ZK identity, a role, and a budget. Let them pay autonomously.
+**_x402 trust layer. Give AI agents ZK identity, a role, and a budget. Let them pay autonomously._**
 
 For AI agents to evolve from simple API callers into true economic actors, they need identity, authorization boundaries, and verifiable audit trails. Trust402 is the trust layer for the [x402 payment protocol](https://github.com/coinbase/x402) that makes this possible.
 
