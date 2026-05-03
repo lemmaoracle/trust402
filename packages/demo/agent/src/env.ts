@@ -20,6 +20,10 @@ export type EnvConfig = Readonly<{
   holderPublicKey: string;
   baseSepoliaRpcUrl: string | undefined;
   keeperhubWebhookUrl: string | undefined;
+  agentEnsName: string;
+  issuerEnsName: string;
+  resolvedAgentAddress: string | undefined;
+  resolvedIssuerAddress: string | undefined;
 }>;
 
 const REQUIRED_VARS: ReadonlyArray<RequiredVar> = [
@@ -55,10 +59,14 @@ export const validateEnv = (): EnvConfig => {
     artifactPath: process.env.ARTIFACT_PATH ?? "./artifact.json",
     maxSpend: Number(process.env.MAX_SPEND ?? 1000),
     lemmaApiBase: process.env.LEMMA_API_BASE ?? "https://workers.lemma.workers.dev",
-    agentId: process.env.AGENT_ID ?? "did:trust402:demo-agent",
-    issuerId: process.env.ISSUER_ID ?? "did:trust402:demo-issuer",
+    agentId: process.env.AGENT_ID ?? process.env.AGENT_ENS_NAME ?? "agent.trust402.eth",
+    issuerId: process.env.ISSUER_ID ?? process.env.ISSUER_ENS_NAME ?? "issuer.trust402.eth",
     holderPublicKey: process.env.HOLDER_PUBLIC_KEY!,
     baseSepoliaRpcUrl: process.env.BASE_SEPOLIA_RPC_URL,
     keeperhubWebhookUrl: process.env.KEEPERHUB_WEBHOOK_URL,
+    agentEnsName: process.env.AGENT_ENS_NAME ?? "agent.trust402.eth",
+    issuerEnsName: process.env.ISSUER_ENS_NAME ?? "issuer.trust402.eth",
+    resolvedAgentAddress: undefined,
+    resolvedIssuerAddress: undefined,
   };
 };

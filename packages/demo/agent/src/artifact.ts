@@ -220,6 +220,14 @@ const displayBudgetTable = (env: EnvConfig): void => {
   console.log(chalk.cyan("\n  ━━━ Agent Budget ━━━\n"));
   console.log(`    Role:       purchaser`);
   console.log(`    Max Spend:  ${formatUsd(env.maxSpend)}`);
+  const agentDisplay = R.isNil(env.resolvedAgentAddress)
+    ? env.agentId
+    : `${env.agentId} (${env.resolvedAgentAddress})`;
+  const issuerDisplay = R.isNil(env.resolvedIssuerAddress)
+    ? env.issuerId
+    : `${env.issuerId} (${env.resolvedIssuerAddress})`;
+  console.log(`    Agent:      ${agentDisplay}`);
+  console.log(`    Issuer:     ${issuerDisplay}`);
   console.log();
 };
 

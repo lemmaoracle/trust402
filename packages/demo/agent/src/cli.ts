@@ -19,6 +19,7 @@ import * as path from "node:path";
 import chalk from "chalk";
 import figlet from "figlet";
 import { validateEnv } from "./env.js";
+import { resolveEnsNames } from "./ens.js";
 import { displaySkillSummary } from "./skill-loader.js";
 import { displayQuery, runReasoningSimulation } from "./reasoning.js";
 import { loadOrPromptArtifact } from "./artifact.js";
@@ -55,7 +56,10 @@ const main = async (): Promise<void> => {
   console.log(chalk.dim("  AI agent demo — zk-proven payments for verified data via x402\n"));
 
   // ── Validate environment ────────────────────────────────────────
-  const env = validateEnv();
+  let env = validateEnv();
+
+  // ── Resolve ENS names to Ethereum addresses ────────────────────
+  env = await resolveEnsNames(env);
 
   console.log(chalk.dim(`\n  Resource server: ${env.resourceUrl}`));
   await waitForKeypress("Continue to agent startup");
