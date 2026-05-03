@@ -19,6 +19,7 @@
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-functional": "^7.0.0",
+    "tsx": "^4.19.0",
     "typescript-eslint": "^8.0.0"
   }
 }
