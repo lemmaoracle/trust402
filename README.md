@@ -1,19 +1,14 @@
 # Trust402
 
-ZK-proof-gated payments for autonomous AI agents. Trust402 combines zero-knowledge role enforcement with the [x402 payment protocol](https://github.com/coinbase/x402) to let AI agents pay for verified data — without exposing credentials.
+> x402 trust layer. Give AI agents ZK identity, a role, and a budget. Let them pay autonomously.
 
-## How It Works
+For AI agents to evolve from simple API callers into true economic actors, they need identity, authorization boundaries, and verifiable audit trails. Trust402 is the trust layer for the [x402 payment protocol](https://github.com/coinbase/x402) that makes this possible.
 
-```text
-User Query -> AI Reasoning -> ZK Role Proof -> x402 Payment -> Verified Data
+It equips AI agents with ZK-proof artifacts: committing their credential via Poseidon hashes, proving their role membership and spend limits through Circom circuits (Groth16 on BN254), and submitting both proofs to the [Lemma oracle](https://lemma.frame00.com/) for immutable on-chain settlement.
 
-ZK Role Proof validates:
-  - Agent role (e.g. "purchaser")
-  - Spend limit <= gate ceiling
-  - Credential not expired / not revoked
-```
+While this implementation uses Groth16/Poseidon, the underlying Lemma protocol is algorithm-agnostic: developers can register arbitrary ZK circuits (Circom, Halo2, etc.) and swap commitment schemes (Poseidon2, Rescue-Prime, lattice-hash) without protocol-level changes.
 
-An agent holds a Verifiable Credential (committed on-chain via [Lemma](https://lemma.frame00.com/)). Before paying, it generates a Groth16 ZK proof that its role and spend limit satisfy the payment gate. The resource server verifies the proof before accepting payment — credentials never leave the agent.
+The result: agents can autonomously pay for data, but only within cryptographically enforced constraints. No valid proof, no payment. Every transaction is backed by an on-chain attestation, currently deployed on Base Sepolia with mainnet deployment ready.
 
 ## Packages
 
