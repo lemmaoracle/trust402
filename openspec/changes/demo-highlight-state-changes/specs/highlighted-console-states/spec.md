@@ -1,0 +1,86 @@
+## ADDED Requirements
+
+### Requirement: Display Agent Identity Creation State
+The demo CLI SHALL display a highlighted console block when the Agent Identity artifact is successfully generated and saved. The block SHALL be rendered inside `generateArtifact` in `artifact.ts`, immediately after `saveArtifact` succeeds and before returning the artifact.
+
+The title SHALL be "Agent Identity Completed" rendered with a prominent background color (e.g., `chalk.bgMagenta.bold`) and horizontal padding. The block SHALL have vertical and horizontal padding (at least 2 spaces on each side, blank lines above/below).
+
+The data SHALL be presented as a formatted table with the following rows:
+
+| Label | Value |
+|---|---|
+| Credential | The `AgentCredential` returned by `createTestCredential`, serialized as JSON (truncated to 120 chars if longer) |
+| Encrypted Cred | The `RegisterOutput` from `registerIdentity`, containing `{ docHash, cid, commitOutput }`, serialized as JSON (truncated to 120 chars if longer) |
+| Credential Proof | The `ProveOutput` from `proveIdentity` (containing `{ proof, inputs }`) followed by a newline and the submission result from `submitIdentity`, both serialized as JSON (each truncated to 120 chars if longer) |
+
+#### Scenario: Identity artifact generation succeeds
+- **WHEN** `generateArtifact` in `artifact.ts` completes `saveArtifact` and is about to return the artifact
+- **THEN** the system outputs a padded console block with the colored title "Agent Identity Completed"
+- **THEN** the block contains a table with rows for "Credential", "Encrypted Cred", and "Credential Proof" showing the respective data
+
+#### Scenario: Identity artifact generation fails partially (proof fails but partial artifact saved)
+- **WHEN** `generateArtifact` completes but `proveIdentity` had failed (proofResult.proof is empty)
+- **THEN** the system still outputs the block with "Credential" and "Encrypted Cred" rows populated, and "Credential Proof" showing "⚠ Partial — proof generation failed"
+
+### Requirement: Display Successful Payment State
+The demo CLI SHALL display a highlighted console block after the first payment succeeds, at the boundary of Phase 6 (Attestation Verification). The title SHALL be "Proof of Solvency Submitted, Payment Completed" rendered with a prominent background color and horizontal/vertical padding.
+
+The data SHALL be presented as a formatted table with the following rows:
+
+| Label | Value |
+|---|---|
+| Condition | A human-readable string: `role="purchaser", spendLimit=$10.00, price=$0.01 → OK` (formatted from `env.maxSpend` and the payment amount) |
+| Witness | The `CircuitWitness` object produced by calling `witness(gate, artifact.commitOutput)` from `@trust402/roles`, displayed as a key-value table |
+| Proof | The `ProveOutput` (role proof) obtained via an `onProofResult` callback from `wrapFetchWithProof`, serialized as JSON (truncated to 120 chars if longer) |
+| Content | The `summaryJson` (pretty-printed JSON of the first payment's `ApiResponse`) |
+
+The Witness data SHALL be obtained by importing `witness` from `@trust402/roles` and calling it directly with the same `gate` and `artifact.commitOutput` used by the payment pipeline. This is possible because `witness` is a pure, synchronous, exported function.
+
+The Proof data SHALL be obtained by adding an optional `onProofResult` callback parameter to `wrapFetchWithProof` (in `@trust402/protocol`), which is invoked with the `ProveRoleResult` after successful proof generation. The demo CLI SHALL register a callback that stores the result for later display.
+
+#### Scenario: First payment succeeds
+- **WHEN** the first payment ($0.01) completes successfully and Phase 6 (Attestation) begins
+- **THEN** the system outputs a padded console block with the colored title "Proof of Solvency Submitted, Payment Completed"
+- **THEN** the block contains a table with "Condition" showing the passing constraint, "Witness" showing the circuit witness fields, "Proof" showing the role proof output, and "Content" showing the response JSON
+
+#### Scenario: First payment fails
+- **WHEN** the first payment fails
+- **THEN** the system does NOT display this state block (only the existing error message is shown)
+
+### Requirement: Display Failed Payment State
+The demo CLI SHALL display a highlighted console block after the second payment fails due to budget enforcement, immediately before the "Continue to transaction summary" keypress prompt. The title SHALL be "Proof Invalid, Payment Rejected" rendered with a prominent background color and horizontal/vertical padding.
+
+The data SHALL be presented as a formatted table with the following rows:
+
+| Label | Value |
+|---|---|
+| Condition | A human-readable string: `role="purchaser", spendLimit=$10.00, price=$500.00 → NG` (formatted from `env.maxSpend` and the attempted payment amount) |
+| Witness | The `CircuitWitness` object produced by calling `witness(gate, artifact.commitOutput)` from `@trust402/roles`, displayed as a key-value table |
+| Proof | The string `"Failed"` (since the role proof circuit rejects the over-budget witness) |
+| Content | The string `"-"` (no content was obtained) |
+
+The Witness data SHALL be obtained by the same mechanism as the successful payment: calling `witness(gate, artifact.commitOutput)` directly. Even though the proof fails, the witness itself can still be constructed because `witness` is a pure function that does not validate circuit constraints.
+
+#### Scenario: Second payment fails budget enforcement
+- **WHEN** the second payment ($500) is rejected because the price exceeds the spend limit
+- **THEN** the system outputs a padded console block with the colored title "Proof Invalid, Payment Rejected"
+- **THEN** the block contains a table with "Condition" showing the failing constraint, "Witness" showing the circuit witness fields, "Proof" showing "Failed", and "Content" showing "-"
+
+#### Scenario: Second payment unexpectedly succeeds (MAX_SPEND too high)
+- **WHEN** the second payment succeeds because MAX_SPEND is >= $500.00
+- **THEN** the system does NOT display this failure state block (the existing warning message is sufficient)
+
+### Requirement: State Change Block Formatting
+All highlighted state change blocks SHALL use consistent formatting:
+
+- The title SHALL be rendered with a colored background (`chalk.bgMagenta.bold` or equivalent prominent color) and centered within a fixed-width bar.
+- The block SHALL have at least 2 spaces of horizontal padding on each side of the content.
+- The block SHALL have at least one blank line above and below the table content.
+- Table rows SHALL use `console.table` or a manually formatted key-value table with aligned columns.
+- Large string values (proofs, JSON objects) SHALL be truncated to a maximum of 120 characters with a "…" suffix when exceeding that length.
+
+#### Scenario: Consistent formatting across all state blocks
+- **WHEN** any highlighted state change block is displayed
+- **THEN** the title uses the same background color and padding style
+- **THEN** the table content has consistent indentation and alignment
+- **THEN** any value exceeding 120 characters is truncated with "…"
