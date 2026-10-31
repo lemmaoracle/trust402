@@ -176,6 +176,21 @@ describe("submit", () => {
       circuitId: "agent-identity-v1",
       proof: mockProveOutput.proof,
       inputs: mockProveOutput.inputs,
+      onchain: true,
+      chainId: 84532,
+    });
+  });
+
+  it("forwards an explicit chainId override", async () => {
+    const { submit } = await import("./index.js");
+    await submit(mockClient, "docHash123", mockProveOutput, 8453);
+    expect(mockSubmit).toHaveBeenCalledWith(mockClient, {
+      docHash: "docHash123",
+      circuitId: "agent-identity-v1",
+      proof: mockProveOutput.proof,
+      inputs: mockProveOutput.inputs,
+      onchain: true,
+      chainId: 8453,
     });
   });
 
